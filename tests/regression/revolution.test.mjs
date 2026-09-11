@@ -12,11 +12,16 @@ async function check(text,expected) {
     try {
         const product=Number(text.match(/#(\d+)=IFCBUILDINGELEMENTPROXY/)[1]);
         const mesh=api.GetFlatMesh(model,product);let volume=0,triangles=0;
-        const edges=new Map();
+        const edges=new Map(), world=[];
         for(let k=0;k<mesh.geometries.size();k++) {
             const g=api.GetGeometry(model,mesh.geometries.get(k).geometryExpressID);
             const v=api.GetVertexArray(g.GetVertexData(),g.GetVertexDataSize());
             const indices=api.GetIndexArray(g.GetIndexData(),g.GetIndexDataSize());
+            const t=mesh.geometries.get(k).flatTransformation;
+            for(let i=0;i<v.length;i+=6){
+                const x=v[i],y=v[i+1],z=v[i+2];
+                world.push([t[0]*x+t[4]*y+t[8]*z+t[12],-(t[2]*x+t[6]*y+t[10]*z+t[14]),t[1]*x+t[5]*y+t[9]*z+t[13]]);
+            }
             for(let i=0;i<indices.length;i+=3){
                 const p=Array.from(indices.slice(i,i+3),j=>Array.from(v.slice(j*6,j*6+3)));
                 assert.ok(p.flat().every(Number.isFinite));const [a,b,c]=p;
@@ -30,6 +35,7 @@ async function check(text,expected) {
         assert.ok(triangles>0,'geometry must be present');
         assert.ok(Math.abs(Math.abs(volume)-expected)<expected*.01,`volume ${Math.abs(volume)}, expected ${expected}`);
         assert.ok([...edges.values()].every(([count,winding])=>count===2&&winding===0),'closed mesh with consistent winding');
+        return [0,1,2].map(i=>[Math.min(...world.map(p=>p[i])),Math.max(...world.map(p=>p[i]))]);
     } finally {api.CloseModel(model);}
 }
 
@@ -39,3 +45,12 @@ test('revolution: reversed axis',async()=>check(source.replace('IFCDIRECTION((0.
 test('revolution: rectangular hollow profile',async()=>check(source.replace('IFCRECTANGLEPROFILEDEF(.AREA.,$,#14,2.,1.)','IFCRECTANGLEHOLLOWPROFILEDEF(.AREA.,$,#14,2.,1.,0.2,$,$)'),1.56*Math.PI));
 test('revolution: offset axis',async()=>check(source.replace('#18=IFCCARTESIANPOINT((0.,0.,0.));','#18=IFCCARTESIANPOINT((1.,0.,0.));'),2*Math.PI));
 test('revolution: rotated profile',async()=>check(source.replace('#14=IFCAXIS2PLACEMENT2D(#13,$);','#900=IFCDIRECTION((0.8660254037844386,0.5));\n#14=IFCAXIS2PLACEMENT2D(#13,#900);'),3*Math.PI));
+test('revolution: missing angle unit defaults to radians',async()=>check(source.replace('IFCUNITASSIGNMENT((#9,#10))','IFCUNITASSIGNMENT((#9))'),3*Math.PI));
+test('revolution: conversion-based degree unit',async()=>check(source.replace('#10=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);','#910=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);\n#911=IFCDIMENSIONALEXPONENTS(0,0,0,0,0,0,0);\n#912=IFCMEASUREWITHUNIT(IFCPLANEANGLEMEASURE(0.017453292519943295),#910);\n#10=IFCCONVERSIONBASEDUNIT(#911,.PLANEANGLEUNIT.,\'DEGREE\',#912);').replace('#20,1.5707963267948966)','#20,90.)'),3*Math.PI));
+test('revolution: negative exported angle preserves geometry',async()=>check(source.replace('#20,1.5707963267948966)','#20,-1.5707963267948966)'),3*Math.PI));
+test('revolution: direction follows axis cross radius',async()=>{
+ const bounds=await check(source,3*Math.PI),expected=[[0,4],[-.5,.5],[-4,0]];
+ for(let i=0;i<3;i++)for(let j=0;j<2;j++)assert.ok(Math.abs(bounds[i][j]-expected[i][j])<1e-5);
+ const reversed=await check(source.replace('#20,1.5707963267948966)','#20,-1.5707963267948966)'),3*Math.PI);
+ assert.ok(Math.abs(reversed[2][0])<1e-5&&Math.abs(reversed[2][1]-4)<1e-5);
+});

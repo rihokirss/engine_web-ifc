@@ -731,7 +731,11 @@ namespace webifc::geometry
 				geometry.AddGeometry(RevolveProfile(child, axis, origin, angle, circleSegments));
 			return geometry;
 		}
-		if (glm::length(axis) == 0 || angle <= 0 || profile.curve.points.size() < 3) return geometry;
+		if (glm::length(axis) == 0 || !std::isfinite(angle) || angle == 0 || profile.curve.points.size() < 3) return geometry;
+        // Some exporters use signed plane-angle measures. Preserve their direction
+        // instead of silently dropping the solid; standard positive angles are unchanged.
+        if (angle < 0) { axis = -axis; angle = -angle; }
+        if (angle > 2 * glm::pi<double>() + 1e-8) return geometry;
 		axis = glm::normalize(axis);
 		std::vector<std::vector<glm::dvec2>> rings;
 		for (size_t r = 0; r <= profile.holes.size(); ++r)
