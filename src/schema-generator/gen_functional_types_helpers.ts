@@ -225,7 +225,7 @@ export function expTypeToTSType(expTypeName:string)
     }
     else if (expTypeName == "BINARY")
     {
-        tsType = "number";
+        tsType = "string";
     }
     else if (expTypeName == "LOGICAL")
     {
@@ -241,7 +241,7 @@ export function expTypeToTypeNum(expTypeName:string) : number
     else if (expTypeName == "REAL" || expTypeName == "NUMBER") return 4;
     else if (expTypeName == "STRING") return 1;
     else if (expTypeName == "BOOLEAN") return 3;
-    else if (expTypeName == "BINARY") return 4;
+    else if (expTypeName == "BINARY") return 11;
     else if (expTypeName == "LOGICAL") return 3;
     return 5;
 }
