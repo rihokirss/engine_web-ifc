@@ -103,6 +103,13 @@ export function generateTapeAssignment(p: Prop, ifcDerivedProps: string[],types:
     {
         return "undefined";
     }
+    else if (p.primitive && p.typeNum === 11)
+    {
+        const value = '{type:11,value:typeof p === "string" ? p : p.value}';
+        const convert = p.set ? `i.${p.name}!.map((p:any) => ${p.dimensions > 1 ? `p.map((p:any) => (${value}))` : `(${value})`})`
+            : `({type:11,value:typeof i.${p.name} === "string" ? i.${p.name} : (i.${p.name} as any).value})`;
+        return `i.${p.name} == null ? null : ${convert}`;
+    }
     else if (p.set && type?.isSelect)
     {
         let isEntitySelect = type?.values.some(refType => types.findIndex( t => t.name==refType)==-1);

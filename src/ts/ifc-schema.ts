@@ -3333,7 +3333,7 @@ ToRawLineData[1]={
 2529465313:(i:IFC2X3.IfcParameterizedProfileDef):unknown[]=>[i.ProfileType, i.ProfileName, i.Position],
 2519244187:(i:IFC2X3.IfcPath):unknown[]=>[i.EdgeList],
 3021840470:(i:IFC2X3.IfcPhysicalComplexQuantity):unknown[]=>[i.Name, i.Description, i.HasQuantities, i.Discrimination, i.Quality, i.Usage],
-597895409:(i:IFC2X3.IfcPixelTexture):unknown[]=>[i.RepeatS, i.RepeatT, i.TextureType, i.TextureTransform, i.Width, i.Height, i.ColourComponents, i.Pixel],
+597895409:(i:IFC2X3.IfcPixelTexture):unknown[]=>[i.RepeatS, i.RepeatT, i.TextureType, i.TextureTransform, i.Width, i.Height, i.ColourComponents, i.Pixel == null ? null : i.Pixel!.map((p:any) => ({type:11,value:typeof p === "string" ? p : p.value}))],
 2004835150:(i:IFC2X3.IfcPlacement):unknown[]=>[i.Location],
 1663979128:(i:IFC2X3.IfcPlanarExtent):unknown[]=>[i.SizeInX, i.SizeInY],
 2067069095:(_:any):unknown[]=>[],

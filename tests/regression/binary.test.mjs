@@ -10,3 +10,11 @@ for(const schema of ['IFC4','IFC4X3_ADD2'])test('binary pixel parse/write/save '
  const row=api.GetLine(m,9000);assert.equal(row.Pixel.length,1);assert.equal(row.Pixel[0].value,'0FF00AA');row.Pixel[0].value='0ABCDEF';api.WriteLine(m,row);
  assert.equal(api.GetLine(m,9000).Pixel[0].value,'0ABCDEF');const saved=api.SaveModel(m);api.CloseModel(m);assert.match(new TextDecoder().decode(saved),/"0ABCDEF"/);m=api.OpenModel(saved);assert.equal(api.GetLine(m,9000).Pixel[0].value,'0ABCDEF');api.CloseModel(m);
 });
+test('IFC2X3 primitive binary array remains binary when written',async()=>{
+ const api=new w.IfcAPI();await api.Init();
+ const base2x3=fs.readFileSync(new URL('./geometry-fixtures/ifc2x3-block.ifc',import.meta.url),'utf8');
+ const text=base2x3.replace('ENDSEC;\nEND-ISO','#9000=IFCPIXELTEXTURE(.T.,.T.,.TEXTURE.,$,1,1,3,("0FF00AA"));\nENDSEC;\nEND-ISO');
+ let m=api.OpenModel(new TextEncoder().encode(text));const row=api.GetLine(m,9000);assert.deepEqual(row.Pixel,['0FF00AA']);
+ row.Pixel[0]='0ABCDEF';api.WriteLine(m,row);const saved=api.SaveModel(m);api.CloseModel(m);
+ assert.match(new TextDecoder().decode(saved),/"0ABCDEF"/);m=api.OpenModel(saved);assert.deepEqual(api.GetLine(m,9000).Pixel,['0ABCDEF']);api.CloseModel(m);
+});
