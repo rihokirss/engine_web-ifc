@@ -33,4 +33,4 @@ async function check(text,expected) {
 }
 
 test('sectioned solid: horizontal cross sections form an oriented closed shell',async()=>check(source,60));
-test('sectioned solid: sloping directrix',async()=>check(source.replace('IFCCARTESIANPOINT((10.,0.,0.))','IFCCARTESIANPOINT((8.,0.,6.))'),60));
+test('sectioned solid: rotated horizontal directrix',async()=>check(source.replace('IFCCARTESIANPOINT((10.,0.,0.))','IFCCARTESIANPOINT((8.,6.,0.))'),60));

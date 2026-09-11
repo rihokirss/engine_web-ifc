@@ -36,3 +36,6 @@ async function check(text,expected) {
 test('revolution: quarter turn',async()=>check(source,3*Math.PI));
 test('revolution: full turn',async()=>check(fs.readFileSync(new URL('./geometry-fixtures/ifc4-revolve-6.28.ifc',import.meta.url),'utf8'),12*Math.PI));
 test('revolution: reversed axis',async()=>check(source.replace('IFCDIRECTION((0.,1.,0.))','IFCDIRECTION((0.,-1.,0.))'),3*Math.PI));
+test('revolution: rectangular hollow profile',async()=>check(source.replace('IFCRECTANGLEPROFILEDEF(.AREA.,$,#14,2.,1.)','IFCRECTANGLEHOLLOWPROFILEDEF(.AREA.,$,#14,2.,1.,0.2,$,$)'),1.56*Math.PI));
+test('revolution: offset axis',async()=>check(source.replace('#18=IFCCARTESIANPOINT((0.,0.,0.));','#18=IFCCARTESIANPOINT((1.,0.,0.));'),2*Math.PI));
+test('revolution: rotated profile',async()=>check(source.replace('#14=IFCAXIS2PLACEMENT2D(#13,$);','#900=IFCDIRECTION((0.8660254037844386,0.5));\n#14=IFCAXIS2PLACEMENT2D(#13,#900);'),3*Math.PI));
