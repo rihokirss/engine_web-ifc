@@ -2339,9 +2339,12 @@ namespace webifc::geometry
 
     IfcGeometry booleanManager::BoolProcess(const std::vector<IfcGeometry> &firstGeoms, std::vector<IfcGeometry> &secondGeoms, std::string op, IfcGeometrySettings _settings)
     {
-        // A intersect B = A minus (A minus B). Reuse the bounded difference kernel,
-        // including its handling of transformed/multipart operands and half spaces.
-        if (op == "INTERSECTION")
+        // Keep the difference-based intersection for multipart operands and half spaces.
+        // A single pair of bounded solids can use the direct intersection kernel.
+        if (op == "INTERSECTION" &&
+            (firstGeoms.size() != 1 || secondGeoms.size() != 1 ||
+             firstGeoms.front().halfSpace || secondGeoms.front().halfSpace ||
+             firstGeoms.front().numFaces == 0 || secondGeoms.front().numFaces == 0))
         {
             if (firstGeoms.empty() || secondGeoms.empty()) return IfcGeometry();
             std::vector<IfcGeometry> outside{BoolProcess(firstGeoms, secondGeoms, "DIFFERENCE", _settings)};
@@ -2465,6 +2468,12 @@ namespace webifc::geometry
                     else if (op == "UNION")
                     {
                         firstOperator = Union(firstOperator, secondOperator);
+                    }
+                    else if (op == "INTERSECTION")
+                    {
+                        auto a = convertToEngine(firstOperator);
+                        auto b = convertToEngine(secondOperator);
+                        firstOperator = convertToWebIfc(fuzzybools::Intersection(a, b));
                     }
                 }
                 catch (const std::exception &e)
