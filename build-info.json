@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "e1ace6c7761fcc63ce133604feac9c73e85c3a47",
+  "upstreamCommit": "4760418f6bc2751f49692e7cab9e40abb3038cfd",
+  "emscripten": "4.0.10",
+  "version": "0.0.78+structura.1",
+  "threading": "single-thread",
+  "apiBuildDefines": {
+    "self.crossOriginIsolated": "false"
+  },
+  "sha256": {
+    "web-ifc-mt.wasm": "3a3be8b37435cdc44ae533d6bd929436df862ef435d57a113d7e817189fc5422",
+    "web-ifc-node.wasm": "9bf2155fcf5402c7b75b4bcb5c0cc3d7851d2c0c6629a41ef7503ea1bbe697c3",
+    "web-ifc.wasm": "66f6f027a13e9b11c9ab480265fb01943c7cd9da6a7708caf14b58cd35e6b647",
+    "web-ifc-api-iife.js": "ecaf1c7463f5eb8d6877d3afb87e3903ca08bd8c358106d263983ad5069ada30",
+    "web-ifc-api.js": "ddfc17489b06606d113801b588bdb44478290391d87cda27eb5761b1d1309f74",
+    "web-ifc-api-node.js": "45787f633b7aecdcf23ce89656ac451ad88b43a20eeaca6d1e98df64b48cabca"
+  }
+}
