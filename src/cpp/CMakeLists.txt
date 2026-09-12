@@ -30,9 +30,10 @@ endif()
 file(GLOB_RECURSE web-ifc-source web-ifc/*.cpp)
 file(GLOB_RECURSE web-ifc-wasm wasm/*.cpp)
 
+# Pin validated dependency revisions so clean and cached builds use the same versions.
 # download the external projects and save their paths
 Message("Downloading FastFloat")
-FetchContent_Declare(fastfloat GIT_REPOSITORY "https://github.com/fastfloat/fast_float" GIT_TAG "05087a303dad9c98768b33c829d398223a649bc6" SOURCE_SUBDIR "../")
+FetchContent_Declare(fastfloat GIT_REPOSITORY "https://github.com/fastfloat/fast_float" GIT_TAG "2b2395f9ac836ffca6404424bcc252bff7aa80e4" SOURCE_SUBDIR "../")
 FetchContent_MakeAvailable(fastfloat)
 FetchContent_GetProperties(fastfloat)
 
@@ -47,7 +48,7 @@ FetchContent_MakeAvailable(tinycpptest)
 FetchContent_GetProperties(tinycpptest)
 
 Message("Downloading GLM")
-FetchContent_Declare(glm GIT_REPOSITORY "https://github.com/g-truc/glm" GIT_TAG "8d1fd52e5ab5590e2c81768ace50c72bae28f2ed" SOURCE_SUBDIR "../")
+FetchContent_Declare(glm GIT_REPOSITORY "https://github.com/g-truc/glm" GIT_TAG "0af55ccecd98d4e5a8d1fad7de25ba429d60e863" SOURCE_SUBDIR "../")
 FetchContent_MakeAvailable(glm)
 FetchContent_GetProperties(glm)
 
@@ -57,12 +58,12 @@ FetchContent_MakeAvailable(earcut)
 FetchContent_GetProperties(earcut)
 
 Message("Downloading CDT")
-FetchContent_Declare(cdt GIT_REPOSITORY "https://github.com/artem-ogre/CDT" GIT_TAG "5a1d702a01b24b33555913b90934fe673d51fc0f" SOURCE_SUBDIR "../")
+FetchContent_Declare(cdt GIT_REPOSITORY "https://github.com/artem-ogre/CDT" GIT_TAG "4d0c9026b8ec846fe544897e7111f8f9080d5f8a" SOURCE_SUBDIR "../")
 FetchContent_MakeAvailable(cdt)
 FetchContent_GetProperties(cdt)
 
 Message("Downloading spdlog")
-FetchContent_Declare(spdlog GIT_REPOSITORY "https://github.com/gabime/spdlog" GIT_TAG "79524ddd08a4ec981b7fea76afd08ee05f83755d" SOURCE_SUBDIR "../")
+FetchContent_Declare(spdlog GIT_REPOSITORY "https://github.com/gabime/spdlog" GIT_TAG "f355b3d58f7067eee1706ff3c801c2361011f3d5" SOURCE_SUBDIR "../")
 FetchContent_MakeAvailable(spdlog)
 FetchContent_GetProperties(spdlog)
 
