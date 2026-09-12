@@ -226,7 +226,7 @@ namespace fuzzybools
         }
     }
 
-    static void doubleClipSingleMesh2(Geometry& mesh, BVH& bvh1, BVH& bvh2, Geometry& result)
+    static void doubleClipSingleMesh2(Geometry& mesh, BVH& bvh1, BVH& bvh2, Geometry& result, bool intersection = false)
     {
         for(auto &plane: mesh.planes)
         {
@@ -234,7 +234,7 @@ namespace fuzzybools
             result.planes.push_back(plane);
         }
 
-        for (uint32_t i = 0; i < mesh.data; i++)
+        for (uint32_t i = 0; i < (intersection ? mesh.numFaces : mesh.data); i++)
         {
             Face tri = mesh.GetFace(i);
             glm::dvec3 a = mesh.GetPoint(tri.i0);
@@ -256,18 +256,20 @@ namespace fuzzybools
             }
             Vec raydir = n + glm::normalize(raydirInPlane); // ~45 deg to the face, never parallel to the face or its normal (#1932)
 
-            auto isInside1Loc = isInsideMesh(triCenter, n, *bvh1.ptr, bvh1, raydir, true);
-            auto isInside2Loc = isInsideMesh(triCenter, n, *bvh2.ptr, bvh2, raydir, true);
+            // Keep operand normals when classifying an intersection boundary.
+            const Vec queryNormal = intersection ? Vec(0) : n;
+            auto isInside1Loc = isInsideMesh(triCenter, queryNormal, *bvh1.ptr, bvh1, raydir, true);
+            auto isInside2Loc = isInsideMesh(triCenter, queryNormal, *bvh2.ptr, bvh2, raydir, true);
 
             Vec extraDir1 = glm::normalize(Vec(1.1, 1.4, 1.2));
             Vec extraDir2 = glm::normalize(Vec(-2.1, 1.4, -3.2));
 
-            auto isInside1Loc_B = isInsideMesh(triCenter, n, *bvh1.ptr, bvh1, extraDir1, true);
-            auto isInside2Loc_B = isInsideMesh(triCenter, n, *bvh2.ptr, bvh2, extraDir1, true);
+            auto isInside1Loc_B = isInsideMesh(triCenter, queryNormal, *bvh1.ptr, bvh1, extraDir1, true);
+            auto isInside2Loc_B = isInsideMesh(triCenter, queryNormal, *bvh2.ptr, bvh2, extraDir1, true);
 
             if(isInside1Loc.loc != isInside1Loc_B.loc)
             {
-                auto isInside1Loc_C = isInsideMesh(triCenter, n, *bvh1.ptr, bvh1, extraDir2, true);
+                auto isInside1Loc_C = isInsideMesh(triCenter, queryNormal, *bvh1.ptr, bvh1, extraDir2, true);
                 if(isInside1Loc_C.loc == isInside1Loc_B.loc){isInside1Loc = isInside1Loc_B;}
                 else if(isInside1Loc_B.loc != isInside1Loc_C.loc && isInside1Loc.loc != isInside1Loc_C.loc)
                 {
@@ -277,7 +279,7 @@ namespace fuzzybools
 
             if(isInside2Loc.loc != isInside2Loc_B.loc)
             {
-                auto isInside2Loc_C = isInsideMesh(triCenter, n, *bvh2.ptr, bvh2, extraDir2, true);
+                auto isInside2Loc_C = isInsideMesh(triCenter, queryNormal, *bvh2.ptr, bvh2, extraDir2, true);
                 if(isInside2Loc_C.loc == isInside2Loc_B.loc){isInside2Loc = isInside2Loc_B;}
                 else if(isInside2Loc_B.loc != isInside2Loc_C.loc && isInside2Loc.loc != isInside2Loc_C.loc)
                 {
@@ -292,7 +294,8 @@ namespace fuzzybools
             {
                 // both outside, no dice, should be impossible though
             }
-            else if (isInside1 == MeshLocation::INSIDE || isInside2 == MeshLocation::INSIDE)
+            else if (intersection ? (isInside1 == MeshLocation::OUTSIDE || isInside2 == MeshLocation::OUTSIDE)
+                                  : (isInside1 == MeshLocation::INSIDE || isInside2 == MeshLocation::INSIDE))
             {
                 // we only keep boundaries, no dice
             }
@@ -310,7 +313,7 @@ namespace fuzzybools
                     result.AddFace(a, b, c, tri.pId);
                 }
             }
-            else if (isInside1 == MeshLocation::BOUNDARY && isInside2 == MeshLocation::OUTSIDE)
+            else if (isInside1 == MeshLocation::BOUNDARY && isInside2 == (intersection ? MeshLocation::INSIDE : MeshLocation::OUTSIDE))
             {
                 // either is a boundary, keep
                 if (glm::dot(n, isInside1Loc.normal) < 0)
@@ -322,7 +325,7 @@ namespace fuzzybools
                     result.AddFace(a, b, c, tri.pId);
                 }
             }
-            else if (isInside2 == MeshLocation::BOUNDARY && isInside1 == MeshLocation::OUTSIDE)
+            else if (isInside2 == MeshLocation::BOUNDARY && isInside1 == (intersection ? MeshLocation::INSIDE : MeshLocation::OUTSIDE))
             {
                 // either is a boundary, keep
                 if (glm::dot(n, isInside2Loc.normal) < 0)
@@ -339,6 +342,8 @@ namespace fuzzybools
                 // neither a boundary, neither inside, neither outside, nothing left
             }
         }
+
+        if (intersection) return;
 
         for (uint32_t i = mesh.data; i < mesh.numFaces; i++)
         {
