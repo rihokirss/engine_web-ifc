@@ -45,4 +45,16 @@ namespace fuzzybools
 
 		return fuzzybools::clipJoin(geom, bvh1, bvh2);
 	}
+
+    inline Geometry Intersection(const Geometry &A, const Geometry &B)
+    {
+        auto bvh1 = MakeBVH(A);
+        auto bvh2 = MakeBVH(B);
+        SharedPosition sp;
+        sp.Construct(A, B, bvh1, bvh2, true);
+        auto mesh = Normalize(A, B, sp, true);
+        Geometry result;
+        doubleClipSingleMesh2(mesh, bvh1, bvh2, result, true);
+        return result;
+    }
 }
