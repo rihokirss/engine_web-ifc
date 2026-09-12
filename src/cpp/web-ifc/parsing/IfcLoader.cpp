@@ -322,6 +322,7 @@ namespace webifc::parsing {
    {
       _inverseIndexes.clear();
       _inverseIndexBytes = 0;
+      ++_revision;
   			_lines.reserve(_tokenStream->GetNoLines());
         uint32_t currentIfcType = 0;
   			uint32_t currentExpressID = 0;
@@ -529,6 +530,7 @@ namespace webifc::parsing {
   {
       _inverseIndexes.clear();
       _inverseIndexBytes = 0;
+      ++_revision;
       _lines.erase(expressID);
   }
   
@@ -536,6 +538,7 @@ namespace webifc::parsing {
   {
       _inverseIndexes.clear();
       _inverseIndexBytes = 0;
+      ++_revision;
       const auto lineIt = _lines.find(expressID);
       if (lineIt == _lines.end()) {
         // create line object
@@ -555,6 +558,7 @@ namespace webifc::parsing {
 
   void IfcLoader::AddHeaderLineTape(const uint32_t type, const uint32_t start)
   {
+      ++_revision;
     
       IfcLine l = IfcLine();
       l.ifcType = type;

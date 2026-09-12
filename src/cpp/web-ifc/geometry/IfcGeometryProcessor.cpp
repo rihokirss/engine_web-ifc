@@ -68,8 +68,13 @@ namespace webifc::geometry
         return _expressIDToGeometry[expressID];
     }
 
-    void IfcGeometryProcessor::Clear()
+    void IfcGeometryProcessor::Clear(bool keepMappedRepresentations)
     {
+        if (!keepMappedRepresentations)
+        {
+            _mappedRepresentations.clear();
+            _mappedRepresentationsBytes = 0;
+        }
         _expressIDToGeometry.clear();
         std::unordered_map<uint32_t, IfcGeometry>().swap(_expressIDToGeometry);
         _cache.Clear();
@@ -145,8 +150,61 @@ namespace webifc::geometry
 
     IfcComposedMesh IfcGeometryProcessor::GetMesh(uint32_t expressID)
     {
+        const auto lineType = _loader.GetLineType(expressID);
+        if (lineType != schema::IFCREPRESENTATIONMAP) return GetMeshUncached(expressID, lineType);
+        if (_mappedRepresentationsRevision != _loader.GetRevision())
+        {
+            _mappedRepresentations.clear();
+            _mappedRepresentationsBytes = 0;
+            _mappedRepresentationsRevision = _loader.GetRevision();
+        }
+        auto found = _mappedRepresentations.find(expressID);
+        if (found != _mappedRepresentations.end())
+        {
+            for (const auto& [id, geometry] : found->second.geometries) _expressIDToGeometry[id] = geometry;
+            return found->second.mesh;
+        }
+        auto mesh = GetMeshUncached(expressID, lineType);
+        std::vector<std::pair<uint32_t, const IfcGeometry*>> geometries;
+        size_t bytes = 0;
+        auto capture = [&](auto&& self, const IfcComposedMesh& node) -> bool
+        {
+            bytes += sizeof(IfcComposedMesh);
+            if (node.hasGeometry)
+            {
+                auto found = _expressIDToGeometry.find(node.expressID);
+                if (found == _expressIDToGeometry.end()) return false;
+                const auto& g = found->second;
+                if (!g.part.empty() || !g.sweptDiskSolid.profiles.empty() || !g.sweptDiskSolid.axis.empty()) return false;
+                bytes += sizeof(IfcGeometry) + g.vertexData.size() * sizeof(double)
+                    + g.fvertexData.size() * sizeof(float) + g.indexData.size() * sizeof(uint32_t)
+                    + g.planeData.size() * sizeof(uint32_t) + g.planes.size() * sizeof(bimGeometry::Plane);
+                if (bytes > 32 * 1024 * 1024) return false;
+                geometries.emplace_back(node.expressID, &g);
+            }
+            for (const auto& child : node.children) if (!self(self, child)) return false;
+            return true;
+        };
+        if (capture(capture, mesh) && bytes <= 32 * 1024 * 1024)
+        {
+            if (_mappedRepresentationsBytes + bytes > 32 * 1024 * 1024 || _mappedRepresentations.size() >= 4096)
+            {
+                _mappedRepresentations.clear();
+                _mappedRepresentationsBytes = 0;
+            }
+            MappedRepresentation entry;
+            entry.mesh = mesh;
+            entry.geometries.reserve(geometries.size());
+            for (const auto& [id, geometry] : geometries) entry.geometries.emplace_back(id, *geometry);
+            _mappedRepresentations.emplace(expressID, std::move(entry));
+            _mappedRepresentationsBytes += bytes;
+        }
+        return mesh;
+    }
+
+    IfcComposedMesh IfcGeometryProcessor::GetMeshUncached(uint32_t expressID, uint32_t lineType)
+    {
         spdlog::debug("[GetMesh({})]", expressID);
-        auto lineType = _loader.GetLineType(expressID);
         auto &relVoids = _cache.GetRelVoids();
 
         IfcComposedMesh mesh;
