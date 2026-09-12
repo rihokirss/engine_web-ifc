@@ -361,43 +361,12 @@ std::vector<uint32_t> GetInversePropertyForItem(uint32_t modelID, uint32_t expre
         return {};
     auto loader = manager.GetIfcLoader(modelID);
     std::vector<uint32_t> inverseIDs;
-    auto expressIDs = GetLineIDsWithType(modelID, targetTypes);
-    for (auto foundExpressID : expressIDs)
+    const uint32_t size = targetTypes["length"].as<uint32_t>();
+    for (uint32_t i = 0; i < size; i++)
     {
-        loader->MoveToLineArgument(foundExpressID, position);
-
-        webifc::parsing::IfcTokenType t = loader->GetTokenType();
-        if (t == webifc::parsing::IfcTokenType::REF)
-        {
-            loader->StepBack();
-            uint32_t val = loader->GetRefArgument();
-            if (val == expressID)
-            {
-                inverseIDs.push_back(foundExpressID);
-                if (!set)
-                    return inverseIDs;
-            }
-        }
-        else if (t == webifc::parsing::IfcTokenType::SET_BEGIN)
-        {
-            while (!loader->IsAtEnd())
-            {
-                webifc::parsing::IfcTokenType setValueType = loader->GetTokenType();
-                if (setValueType == webifc::parsing::IfcTokenType::SET_END)
-                    break;
-                if (setValueType == webifc::parsing::IfcTokenType::REF)
-                {
-                    loader->StepBack();
-                    uint32_t val = loader->GetRefArgument();
-                    if (val == expressID)
-                    {
-                        inverseIDs.push_back(foundExpressID);
-                        if (!set)
-                            return inverseIDs;
-                    }
-                }
-            }
-        }
+        auto ids = loader->GetInversePropertyForItem(expressID, targetTypes[std::to_string(i)].as<uint32_t>(), position, set);
+        inverseIDs.insert(inverseIDs.end(), ids.begin(), ids.end());
+        if (!set && !inverseIDs.empty()) break;
     }
     return inverseIDs;
 }

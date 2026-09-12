@@ -62,6 +62,7 @@ namespace webifc::parsing
       void AddHeaderLineTape(const uint32_t type, const uint32_t start);
       uint32_t GetCurrentLineExpressID() const;
       void RemoveLine(const uint32_t expressID);
+      std::vector<uint32_t> GetInversePropertyForItem(uint32_t expressID, uint32_t type, uint32_t position, bool set) const;
       void PushDouble(double input);
       void PushInt(int64_t input);
       std::string GenerateUUID() const;
@@ -79,6 +80,15 @@ namespace webifc::parsing
         uint32_t tapeOffset;
       };
       IfcLoader(uint32_t maxExpressId, uint32_t lineWriterBuffer, const schema::IfcSchemaManager &schemaManager, IfcTokenStream * tokenStream, ankerl::unordered_dense::map<uint32_t, IfcLine> &lines, std::vector<IfcLine> &headerLines,std::unordered_map<uint32_t, std::vector<uint32_t>> &ifcTypeToExpressID);
+      struct InverseIndex {
+        bool seen = false;
+        bool ready = false;
+        bool disabled = false;
+        size_t bytes = 0;
+        std::unordered_map<uint32_t, std::vector<uint32_t>> references;
+      };
+      mutable std::unordered_map<uint64_t, InverseIndex> _inverseIndexes;
+      mutable size_t _inverseIndexBytes = 0;
       uint32_t _maxExpressId;
       const uint32_t _lineWriterBuffer;
       const schema::IfcSchemaManager &_schemaManager;
