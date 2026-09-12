@@ -54,7 +54,9 @@ export const SET_BEGIN = 7;
 export const SET_END = 8;
 export const LINE_END = 9;
 export const INTEGER = 10;
-/** STEP binary literal body: unused-bit count followed by hexadecimal digits. */
+/** STEP binary literal contents, including the unused-bit prefix (0-3).
+ * Up to 65535 characters; lowercase hex is accepted and saved as uppercase.
+ */
 export const BINARY = 11;
 
 /**
@@ -554,6 +556,7 @@ export class IfcAPI {
         return srcSize;
       }
     );
+    if (result < 0) return -1;
     this.deletedLines.set(result, new Set());
     const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
     if (typeof schemaName !== "string") {
@@ -594,6 +597,7 @@ export class IfcAPI {
         return srcSize;
       }
     );
+    if (result < 0) return -1;
     this.deletedLines.set(result, new Set());
     const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
     if (typeof schemaName !== "string") {
