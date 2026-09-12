@@ -2261,6 +2261,22 @@ namespace webifc::geometry
                     break;
                 }
 
+                if (op == "DIFFERENCE" && !secondGeom.halfSpace)
+                {
+                    const auto a = firstOperator.GetAABB();
+                    const auto b = secondGeom.GetAABB();
+                    const double margin = _settings.TOLERANCE_BOUNDING_BOX
+                        + 2 * bimGeometry::reconstructTolerance * std::max(0.0, bimGeometry::_PLANE_REFIT_ITERATIONS);
+                    if (a.max.x + margin < b.min.x || b.max.x + margin < a.min.x
+                        || a.max.y + margin < b.min.y || b.max.y + margin < a.min.y
+                        || a.max.z + margin < b.min.z || b.max.z + margin < a.min.z)
+                    {
+                        // Preserve the plane refitting performed even by an empty cut.
+                        firstOperator.buildPlanes();
+                        continue;
+                    }
+                }
+
                 IfcGeometry secondOperator;
 
                 if (secondGeom.halfSpace)
