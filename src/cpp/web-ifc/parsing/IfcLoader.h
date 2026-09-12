@@ -63,6 +63,7 @@ namespace webifc::parsing
       uint32_t GetCurrentLineExpressID() const;
       void RemoveLine(const uint32_t expressID);
       std::vector<uint32_t> GetInversePropertyForItem(uint32_t expressID, uint32_t type, uint32_t position, bool set) const;
+      uint64_t GetRevision() const { return _revision; }
       void PushDouble(double input);
       void PushInt(int64_t input);
       std::string GenerateUUID() const;
@@ -89,6 +90,7 @@ namespace webifc::parsing
       };
       mutable std::unordered_map<uint64_t, InverseIndex> _inverseIndexes;
       mutable size_t _inverseIndexBytes = 0;
+      uint64_t _revision = 0;
       uint32_t _maxExpressId;
       const uint32_t _lineWriterBuffer;
       const schema::IfcSchemaManager &_schemaManager;
