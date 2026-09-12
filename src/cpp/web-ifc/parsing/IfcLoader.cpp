@@ -36,6 +36,90 @@ namespace webifc::parsing {
       return _ifcTypeToExpressID.at(type);
    }
    
+
+  std::vector<uint32_t> IfcLoader::GetInversePropertyForItem(uint32_t expressID, uint32_t type, uint32_t position, bool set) const
+  {
+      const auto lines = _ifcTypeToExpressID.find(type);
+      if (lines == _ifcTypeToExpressID.end() || lines->second.empty()) return {};
+      const uint64_t key = (uint64_t(type) << 32) | position;
+      // Bound metadata as well as reference storage for models queried through many inverse attributes.
+      constexpr size_t maxQueryShapes = 64;
+      constexpr size_t maxIndexBytes = 32 * 1024 * 1024;
+      if (!_inverseIndexes.contains(key) && _inverseIndexes.size() >= maxQueryShapes)
+      {
+          _inverseIndexes.clear();
+          _inverseIndexBytes = 0;
+      }
+      auto& index = _inverseIndexes[key];
+      auto lookup = [&]() -> std::vector<uint32_t>
+      {
+          auto found = index.references.find(expressID);
+          if (found == index.references.end()) return {};
+          if (!set && !found->second.empty()) return {found->second.front()};
+          return found->second;
+      };
+      if (index.ready) return lookup();
+      bool buildIndex = index.seen && !index.disabled;
+      index.seen = true;
+      std::vector<uint32_t> result;
+      for (auto id : lines->second)
+      {
+          if (!IsValidExpressID(id)) continue;
+          MoveToLineArgument(id, position);
+          const auto token = GetTokenType();
+          auto record = [&](uint32_t ref)
+          {
+              if (buildIndex)
+              {
+                  // Include vector growth and conservative map-node/bucket overhead.
+                  const size_t bytes = 2 * sizeof(uint32_t) + (index.references.contains(ref) ? 0 : 128);
+                  if (_inverseIndexBytes + bytes > maxIndexBytes)
+                  {
+                      _inverseIndexBytes -= index.bytes;
+                      index.references.clear();
+                      index.references.rehash(0);
+                      index.bytes = 0;
+                      index.disabled = true;
+                      buildIndex = false;
+                  }
+                  else
+                  {
+                      index.references[ref].push_back(id);
+                      index.bytes += bytes;
+                      _inverseIndexBytes += bytes;
+                  }
+              }
+              if (ref == expressID && (set || result.empty())) result.push_back(id);
+          };
+          if (token == IfcTokenType::REF)
+          {
+              StepBack();
+              record(GetRefArgument());
+          }
+          else if (token == IfcTokenType::SET_BEGIN)
+          {
+              while (!IsAtEnd())
+              {
+                  const auto valueType = GetTokenType();
+                  if (valueType == IfcTokenType::SET_END) break;
+                  if (valueType == IfcTokenType::REF)
+                  {
+                      StepBack();
+                      record(GetRefArgument());
+                      if (!buildIndex && !set && !result.empty()) return result;
+                  }
+              }
+          }
+          if (!buildIndex && !set && !result.empty()) return result;
+      }
+      if (buildIndex)
+      {
+          index.ready = true;
+          return lookup();
+      }
+      return result;
+  }
+
    const std::vector<uint32_t> IfcLoader::GetHeaderLinesWithType(const uint32_t type) const
    { 
      std::vector<uint32_t> ret;
@@ -237,6 +321,8 @@ namespace webifc::parsing {
    void IfcLoader::ParseLines() 
    {
       ++_revision;
+      _inverseIndexes.clear();
+      _inverseIndexBytes = 0;
   			_lines.reserve(_tokenStream->GetNoLines());
         uint32_t currentIfcType = 0;
   			uint32_t currentExpressID = 0;
@@ -443,12 +529,16 @@ namespace webifc::parsing {
   void IfcLoader::RemoveLine(const uint32_t expressID)
   {
       ++_revision;
+      _inverseIndexes.clear();
+      _inverseIndexBytes = 0;
       _lines.erase(expressID);
   }
   
   void IfcLoader::UpdateLineTape(const uint32_t expressID, const uint32_t type, const uint32_t start)
   {
       ++_revision;
+      _inverseIndexes.clear();
+      _inverseIndexBytes = 0;
       const auto lineIt = _lines.find(expressID);
       if (lineIt == _lines.end()) {
         // create line object
