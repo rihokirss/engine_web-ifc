@@ -1,7 +1,9 @@
 # web-ifc for Structura
 
-Prebuilt web-ifc from `rihokirss/engine_web-ifc`, source commit `e1ace6c7761fcc63ce133604feac9c73e85c3a47`.
+Prebuilt from source commit `614a95ca86448b05d1bf93ffe2df832736a034f2`.
 
-Includes the Node, browser and multithreaded WASM assets and matching JavaScript APIs. This Structura build disables automatic multithread selection with the esbuild define `self.crossOriginIsolated=false`, avoiding the upstream #2068 worker bootstrap failure. The API uses the tested single-thread runtime in both ordinary and cross-origin-isolated browsers. No C++ toolchain is required when installing this package. See `build-info.json` for source and binary hashes.
+Built with the existing upstream `npm run build-release` pipeline and `WEB_IFC_WASM_NATIVE_EXCEPTIONS=ON`. Native WebAssembly exceptions and SIMD support are required. C++ exception recovery remains enabled.
 
-The source branch contains the pending upstream fixes and their regression cases. Package consumers should pin an exact release commit.
+Includes matching Node and browser ESM/IIFE APIs, declarations and all three WASM assets. API bundles select the single-thread runtime even on isolated pages to avoid the existing worker bootstrap issue. The multithread asset remains available for export compatibility.
+
+No npm lifecycle hooks or C++ toolchain are required on installation. Pin the exact release commit; see build-info.json for build provenance and hashes.

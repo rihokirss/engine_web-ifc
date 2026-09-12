@@ -1,18 +1,45 @@
 {
-  "sourceCommit": "e1ace6c7761fcc63ce133604feac9c73e85c3a47",
-  "upstreamCommit": "4760418f6bc2751f49692e7cab9e40abb3038cfd",
-  "emscripten": "4.0.10",
-  "version": "0.0.78+structura.1",
+  "sourceCommit": "614a95ca86448b05d1bf93ffe2df832736a034f2",
+  "version": "0.0.78+structura.2",
+  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.10 (b7dc6e5747465580df5984e723b9d1f10d8e804b)",
+  "dependencyRevisions": {
+    "fastfloat": "2b2395f9ac836ffca6404424bcc252bff7aa80e4",
+    "tinynurbs": "47115cd9b6e922b27bbc4ab01fdeac2e9ea597a4",
+    "tinycpptest": "12e42c8ac6e032ce450fb3f772ebdfd1ddc6008c",
+    "glm": "0af55ccecd98d4e5a8d1fad7de25ba429d60e863",
+    "earcut": "4811a2b69b91f6127a75e780de6e2113609ddabb",
+    "cdt": "4d0c9026b8ec846fe544897e7111f8f9080d5f8a",
+    "spdlog": "f355b3d58f7067eee1706ff3c801c2361011f3d5",
+    "stduuid": "3afe7193facd5d674de709fccc44d5055e144d7a",
+    "unordered_dense": "3234af2c03549bc85656bfd3a86993bf1cd8aef1"
+  },
   "threading": "single-thread",
+  "wasmCompileFlags": [
+    "-O3",
+    "-fwasm-exceptions",
+    "-msimd128",
+    "-flto"
+  ],
+  "cmakeOptions": {
+    "WEB_IFC_WASM_NATIVE_EXCEPTIONS": "ON"
+  },
   "apiBuildDefines": {
     "self.crossOriginIsolated": "false"
   },
   "sha256": {
-    "web-ifc-mt.wasm": "3a3be8b37435cdc44ae533d6bd929436df862ef435d57a113d7e817189fc5422",
-    "web-ifc-node.wasm": "9bf2155fcf5402c7b75b4bcb5c0cc3d7851d2c0c6629a41ef7503ea1bbe697c3",
-    "web-ifc.wasm": "66f6f027a13e9b11c9ab480265fb01943c7cd9da6a7708caf14b58cd35e6b647",
-    "web-ifc-api-iife.js": "ecaf1c7463f5eb8d6877d3afb87e3903ca08bd8c358106d263983ad5069ada30",
-    "web-ifc-api.js": "ddfc17489b06606d113801b588bdb44478290391d87cda27eb5761b1d1309f74",
-    "web-ifc-api-node.js": "45787f633b7aecdcf23ce89656ac451ad88b43a20eeaca6d1e98df64b48cabca"
-  }
+    "web-ifc-api-iife.js": "8d4e94a2da67368330e185b38f20ff1279c535b50d7ee02e53fd430ffecd56db",
+    "web-ifc-api-node.js": "4debf0032e968482d69772e7372c4c8593a32130558e2ca23662fab803514038",
+    "web-ifc-api.js": "45c2754ab7d6e1075bc16c5ae172f94203a4a703d6e180c4ffa8524f33a95e57",
+    "web-ifc-mt.wasm": "68cca161f99e1a589ec40b6e99e09650932d91af1a708068386b9a35adbe95c9",
+    "web-ifc-node.wasm": "1c4bbd612808910eb21e25ad726d8396745ec103ed1bee35ff69f52566fabfca",
+    "web-ifc.wasm": "3f5b27fa7c45e365b5606c970aed52c39608e59f4f83c61bde345bcf61560cc1"
+  },
+  "buildCommand": "npm run build-release",
+  "apiBuildCommands": [
+    "npm run build-web-ifc-api-node -- --define:self.crossOriginIsolated=false",
+    "npm run build-web-ifc-api-browser -- --define:self.crossOriginIsolated=false",
+    "npm run build-web-ifc-api-iife -- --define:self.crossOriginIsolated=false"
+  ],
+  "typescript": "6.0.3",
+  "esbuild": "0.28.2"
 }
