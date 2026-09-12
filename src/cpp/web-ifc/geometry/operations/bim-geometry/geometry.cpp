@@ -1,3 +1,5 @@
+#include <map>
+#include <limits>
 #include <vector>
 #include <algorithm>
 #include <glm/glm.hpp>
@@ -134,6 +136,28 @@ namespace bimGeometry
             {
                 planes.clear();
                 planeData.clear();
+                std::multimap<double, size_t> planesByX;
+                auto indexedPlane = [&](const glm::dvec3& normal, double distance)
+                {
+                    if (planes.size() < 64 || !std::isfinite(normal.x) || !std::isfinite(normal.y)
+                        || !std::isfinite(normal.z) || !std::isfinite(distance)) return AddPlane(normal, distance);
+                    if (planesByX.empty())
+                        for (const auto& plane : planes)
+                            if (std::isfinite(plane.normal.x)) planesByX.emplace(plane.normal.x, plane.id);
+                    const double lower = std::nextafter(normal.x - toleranceVectorEquality, -std::numeric_limits<double>::infinity());
+                    const double upper = std::nextafter(normal.x + toleranceVectorEquality, std::numeric_limits<double>::infinity());
+                    size_t match = std::numeric_limits<size_t>::max();
+                    for (auto it = planesByX.lower_bound(lower); it != planesByX.end() && it->first <= upper; ++it)
+                        if (it->second < match && planes[it->second].IsEqualTo(normal, distance)) match = it->second;
+                    if (match != std::numeric_limits<size_t>::max()) return match;
+                    Plane plane;
+                    plane.id = planes.size();
+                    plane.normal = glm::normalize(normal);
+                    plane.distance = distance;
+                    planes.push_back(plane);
+                    if (std::isfinite(plane.normal.x)) planesByX.emplace(plane.normal.x, plane.id);
+                    return plane.id;
+                };
 
                 for (size_t i = 0; i < numFaces; i++)
                 {
@@ -171,7 +195,7 @@ namespace bimGeometry
                         double db = glm::dot(norm, b - centroid);
                         double dc = glm::dot(norm, c - centroid);
 
-                        size_t id = AddPlane(norm, (da + db + dc) / 3.0);
+                        size_t id = indexedPlane(norm, (da + db + dc) / 3.0);
                         planeData[i] = id;
                         hasPlanes = true;
                     }
