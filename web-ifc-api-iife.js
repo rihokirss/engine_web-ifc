@@ -2062,6 +2062,11 @@ Originally allocated`);
             var v = type["readValueFromPointer"](arg);
             return Emval.toHandle(v);
           }
+          function __emval_typeof(handle) {
+            handle >>>= 0;
+            handle = Emval.toValue(handle);
+            return Emval.toHandle(typeof handle);
+          }
           function __gmtime_js(time, tmPtr) {
             time = bigintToI53Checked(time);
             tmPtr >>>= 0;
@@ -4344,7 +4349,7 @@ Originally allocated`);
             ___get_exception_message = createExportWrapper("__get_exception_message", 3);
           }
           var ___cpp_exception;
-          var wasmImports = { __assert_fail: ___assert_fail, __throw_exception_with_stack_trace: ___throw_exception_with_stack_trace, _abort_js: __abort_js, _embind_finalize_value_array: __embind_finalize_value_array, _embind_finalize_value_object: __embind_finalize_value_object, _embind_register_bigint: __embind_register_bigint, _embind_register_bool: __embind_register_bool, _embind_register_class: __embind_register_class, _embind_register_class_constructor: __embind_register_class_constructor, _embind_register_class_function: __embind_register_class_function, _embind_register_emval: __embind_register_emval, _embind_register_float: __embind_register_float, _embind_register_function: __embind_register_function, _embind_register_integer: __embind_register_integer, _embind_register_memory_view: __embind_register_memory_view, _embind_register_optional: __embind_register_optional, _embind_register_std_string: __embind_register_std_string, _embind_register_std_wstring: __embind_register_std_wstring, _embind_register_value_array: __embind_register_value_array, _embind_register_value_array_element: __embind_register_value_array_element, _embind_register_value_object: __embind_register_value_object, _embind_register_value_object_field: __embind_register_value_object_field, _embind_register_void: __embind_register_void, _emscripten_runtime_keepalive_clear: __emscripten_runtime_keepalive_clear, _emval_as: __emval_as, _emval_call: __emval_call, _emval_decref: __emval_decref, _emval_get_global: __emval_get_global, _emval_get_method_caller: __emval_get_method_caller, _emval_get_property: __emval_get_property, _emval_incref: __emval_incref, _emval_instanceof: __emval_instanceof, _emval_is_number: __emval_is_number, _emval_is_string: __emval_is_string, _emval_new_array: __emval_new_array, _emval_new_cstring: __emval_new_cstring, _emval_new_object: __emval_new_object, _emval_run_destructors: __emval_run_destructors, _emval_set_property: __emval_set_property, _emval_take_value: __emval_take_value, _gmtime_js: __gmtime_js, _localtime_js: __localtime_js, _setitimer_js: __setitimer_js, _tzset_js: __tzset_js, clock_time_get: _clock_time_get, emscripten_resize_heap: _emscripten_resize_heap, environ_get: _environ_get, environ_sizes_get: _environ_sizes_get, fd_close: _fd_close, fd_fdstat_get: _fd_fdstat_get, fd_read: _fd_read, fd_seek: _fd_seek, fd_write: _fd_write, proc_exit: _proc_exit, random_get: _random_get };
+          var wasmImports = { __assert_fail: ___assert_fail, __throw_exception_with_stack_trace: ___throw_exception_with_stack_trace, _abort_js: __abort_js, _embind_finalize_value_array: __embind_finalize_value_array, _embind_finalize_value_object: __embind_finalize_value_object, _embind_register_bigint: __embind_register_bigint, _embind_register_bool: __embind_register_bool, _embind_register_class: __embind_register_class, _embind_register_class_constructor: __embind_register_class_constructor, _embind_register_class_function: __embind_register_class_function, _embind_register_emval: __embind_register_emval, _embind_register_float: __embind_register_float, _embind_register_function: __embind_register_function, _embind_register_integer: __embind_register_integer, _embind_register_memory_view: __embind_register_memory_view, _embind_register_optional: __embind_register_optional, _embind_register_std_string: __embind_register_std_string, _embind_register_std_wstring: __embind_register_std_wstring, _embind_register_value_array: __embind_register_value_array, _embind_register_value_array_element: __embind_register_value_array_element, _embind_register_value_object: __embind_register_value_object, _embind_register_value_object_field: __embind_register_value_object_field, _embind_register_void: __embind_register_void, _emscripten_runtime_keepalive_clear: __emscripten_runtime_keepalive_clear, _emval_as: __emval_as, _emval_call: __emval_call, _emval_decref: __emval_decref, _emval_get_global: __emval_get_global, _emval_get_method_caller: __emval_get_method_caller, _emval_get_property: __emval_get_property, _emval_incref: __emval_incref, _emval_instanceof: __emval_instanceof, _emval_is_number: __emval_is_number, _emval_is_string: __emval_is_string, _emval_new_array: __emval_new_array, _emval_new_cstring: __emval_new_cstring, _emval_new_object: __emval_new_object, _emval_run_destructors: __emval_run_destructors, _emval_set_property: __emval_set_property, _emval_take_value: __emval_take_value, _emval_typeof: __emval_typeof, _gmtime_js: __gmtime_js, _localtime_js: __localtime_js, _setitimer_js: __setitimer_js, _tzset_js: __tzset_js, clock_time_get: _clock_time_get, emscripten_resize_heap: _emscripten_resize_heap, environ_get: _environ_get, environ_sizes_get: _environ_sizes_get, fd_close: _fd_close, fd_fdstat_get: _fd_fdstat_get, fd_read: _fd_read, fd_seek: _fd_seek, fd_write: _fd_write, proc_exit: _proc_exit, random_get: _random_get };
           var wasmExports = await createWasm();
           function applySignatureConversions(wasmExports2) {
             wasmExports2 = Object.assign({}, wasmExports2);
@@ -68480,6 +68485,7 @@ Originally allocated`);
           return srcSize;
         }
       );
+      if (result < 0) return -1;
       this.deletedLines.set(result, /* @__PURE__ */ new Set());
       const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
       if (typeof schemaName !== "string") {
@@ -68516,6 +68522,7 @@ Originally allocated`);
           return srcSize;
         }
       );
+      if (result < 0) return -1;
       this.deletedLines.set(result, /* @__PURE__ */ new Set());
       const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
       if (typeof schemaName !== "string") {

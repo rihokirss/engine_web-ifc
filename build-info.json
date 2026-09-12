@@ -1,6 +1,6 @@
 {
-  "sourceCommit": "614a95ca86448b05d1bf93ffe2df832736a034f2",
-  "version": "0.0.78+structura.2",
+  "sourceCommit": "e3c1df8bed33c23947472e7bfadcb239a4327b95",
+  "version": "0.0.78+structura.3",
   "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.10 (b7dc6e5747465580df5984e723b9d1f10d8e804b)",
   "dependencyRevisions": {
     "fastfloat": "2b2395f9ac836ffca6404424bcc252bff7aa80e4",
@@ -27,12 +27,15 @@
     "self.crossOriginIsolated": "false"
   },
   "sha256": {
-    "web-ifc-api-iife.js": "8d4e94a2da67368330e185b38f20ff1279c535b50d7ee02e53fd430ffecd56db",
-    "web-ifc-api-node.js": "4debf0032e968482d69772e7372c4c8593a32130558e2ca23662fab803514038",
-    "web-ifc-api.js": "45c2754ab7d6e1075bc16c5ae172f94203a4a703d6e180c4ffa8524f33a95e57",
-    "web-ifc-mt.wasm": "68cca161f99e1a589ec40b6e99e09650932d91af1a708068386b9a35adbe95c9",
-    "web-ifc-node.wasm": "1c4bbd612808910eb21e25ad726d8396745ec103ed1bee35ff69f52566fabfca",
-    "web-ifc.wasm": "3f5b27fa7c45e365b5606c970aed52c39608e59f4f83c61bde345bcf61560cc1"
+    "web-ifc-api-iife.js": "75670bebd0525f65c76bfe8a5fa0702255a4135f93ce2d5ab219f3e8dec265d1",
+    "web-ifc-api-node.js": "64656376136b1f0d19b42bc776540854daa35591d60299698d46159ed7694397",
+    "web-ifc-api.js": "254c2a6b00a4fc791069c814a195b36f3243343f5d4c962cc3a3ab0bf3d10a6f",
+    "web-ifc-mt.js": "30326a34ec0f43ba059403643255282345a007201ff655c41f4c353d31e74e8b",
+    "web-ifc-mt.wasm": "3dc252c4dd474d253967a3211d82e062d63e8769a970e2c4b2724f7abf3b6715",
+    "web-ifc-node.js": "7136647075d1927d2277752c8d9b4766a2a00ff636499f1d39eb4511bd20395c",
+    "web-ifc-node.wasm": "f2312fcc58295159018601185c9ca89e45c33229a18efd45e44a84e382c6473b",
+    "web-ifc.js": "fdb8dc51f617b81e7b6be6f97c28f89a7911cb812f4578706bb705374dd2cc5d",
+    "web-ifc.wasm": "c3fa7cb6a4b9bbc012ead956cef8cebdce60da8530b0ef028b492e79004979c6"
   },
   "buildCommand": "npm run build-release",
   "apiBuildCommands": [
@@ -41,5 +44,121 @@
     "npm run build-web-ifc-api-iife -- --define:self.crossOriginIsolated=false"
   ],
   "typescript": "6.0.3",
-  "esbuild": "0.28.2"
+  "esbuild": "0.28.2",
+  "sourceBranch": "codex/source-structura-3",
+  "prHeads": [
+    {
+      "headRefName": "codex/pr-circular-seams-and-sphere",
+      "headRefOid": "68ae86488f11978ff331018abfba81afa3f5a1cc",
+      "number": 2168,
+      "title": "Close circular profiles and fix sphere topology and placement",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2168"
+    },
+    {
+      "headRefName": "codex/pr-face-surface",
+      "headRefOid": "1b58021a5850266418d9cf7124e7018943263dae",
+      "number": 2166,
+      "title": "Tessellate FaceSurface geometry and respect surface orientation",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2166"
+    },
+    {
+      "headRefName": "codex/pr-revolved-solids",
+      "headRefOid": "2e2e75c17af05feca1d4b53a6580ce0ee2dae1e9",
+      "number": 2164,
+      "title": "Generate closed revolved solids with voids and correct placements",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2164"
+    },
+    {
+      "headRefName": "codex/pr-schema-aliases",
+      "headRefOid": "6667c8a746a5099d2ec13fa8271112f2dc5ed516",
+      "number": 2163,
+      "title": "Require explicit opt-in for incompatible schema aliases",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2163"
+    },
+    {
+      "headRefName": "codex/pr-sectioned-solid",
+      "headRefOid": "5a810688b20336ec6c2c7d71b7ac5c855aebe715",
+      "number": 2161,
+      "title": "Preserve sectioned solid voids and orient solid and open sections",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2161"
+    },
+    {
+      "headRefName": "codex/pr-primitives-and-voids",
+      "headRefOid": "7a26f6adf62fab8de061b3b27ff1bfdc79ec32b4",
+      "number": 2159,
+      "title": "Add CSG primitive construction and faceted BRep void shells",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2159"
+    },
+    {
+      "headRefName": "codex/pr-intersection",
+      "headRefOid": "c08160467a06f0c54ddb5930fbe6a2b9d61dd30a",
+      "number": 2157,
+      "title": "Implement boolean intersection using the difference kernel",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2157"
+    },
+    {
+      "headRefName": "codex/pr-swept-disk",
+      "headRefOid": "27ffbcb50d8d958705434ec220af397d3a0dc966",
+      "number": 2155,
+      "title": "Generate swept disk voids, end caps and parameter-trimmed directrices",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2155"
+    },
+    {
+      "headRefName": "codex/pr-binary",
+      "headRefOid": "1186c76d7ef120212d014a3342a5a716aef81582",
+      "number": 2153,
+      "title": "Preserve STEP BINARY values across parsing and serialization",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2153"
+    },
+    {
+      "headRefName": "codex/pr-malformed-input",
+      "headRefOid": "a40ac991d92ee878cb67f4a45e59e6286abdf79a",
+      "number": 2151,
+      "title": "Bound malformed tokens, indices and placement recursion",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2151"
+    },
+    {
+      "headRefName": "codex/pr-integers",
+      "headRefOid": "c191844ec9d75ba81f752be708cede0eb3879429",
+      "number": 2149,
+      "title": "Preserve integers within the JavaScript safe range",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2149"
+    },
+    {
+      "headRefName": "codex/pr-step-text",
+      "headRefOid": "8cd8a99b396dc914cdfbf681a8dc65f74a17431f",
+      "number": 2147,
+      "title": "Preserve Unicode and STEP escapes across text round trips",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2147"
+    },
+    {
+      "headRefName": "codex/pr-tapered-extrusion",
+      "headRefOid": "178b0f0268fcbead4d620e08fd22ddf392974cef",
+      "number": 2145,
+      "title": "Generate tapered extrusions from both profiles",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2145"
+    },
+    {
+      "headRefName": "codex/pr-derived-profile",
+      "headRefOid": "08d3c1c51235cdd0b9f72713964af27e159d1cf2",
+      "number": 2144,
+      "title": "Transform void boundaries in derived profiles",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2144"
+    },
+    {
+      "headRefName": "codex/pr-t-profile",
+      "headRefOid": "7db2dc96ee4b245058c5a020baee88d3850d96cd",
+      "number": 2142,
+      "title": "Respect independent flange thickness in T profiles",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2142"
+    },
+    {
+      "headRefName": "codex/pr-hollow-rectangle",
+      "headRefOid": "642d6e3fd582c1f8f926a0d8affb8ce8475ae80e",
+      "number": 2140,
+      "title": "Fix wall thickness in hollow rectangle profiles",
+      "url": "https://github.com/ThatOpen/engine_web-ifc/pull/2140"
+    }
+  ],
+  "performanceHead": "cf3ba6ea74a429e04f63000ed4d24fb39c3fb891"
 }

@@ -19,7 +19,9 @@ export declare const SET_BEGIN = 7;
 export declare const SET_END = 8;
 export declare const LINE_END = 9;
 export declare const INTEGER = 10;
-/** STEP binary literal body: unused-bit count followed by hexadecimal digits. */
+/** STEP binary literal contents, including the unused-bit prefix (0-3).
+ * Up to 65535 characters; lowercase hex is accepted and saved as uppercase.
+ */
 export declare const BINARY = 11;
 /**
  * Settings for the IFCLoader

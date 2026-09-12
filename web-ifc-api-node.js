@@ -153,7 +153,7 @@ var require_web_ifc_node = __commonJS({
           runtimeInitialized = true;
           if (!Module["noFSInit"] && !FS.initialized) FS.init();
           TTY.init();
-          wasmExports["aa"]();
+          wasmExports["ba"]();
           FS.ignorePermissions = false;
         }
         function postRun() {
@@ -248,9 +248,9 @@ var require_web_ifc_node = __commonJS({
           function receiveInstance(instance, module3) {
             wasmExports = instance.exports;
             wasmExports = applySignatureConversions(wasmExports);
-            wasmMemory = wasmExports["$"];
+            wasmMemory = wasmExports["aa"];
             updateMemoryViews();
-            wasmTable = wasmExports["ea"];
+            wasmTable = wasmExports["fa"];
             assignWasmExports(wasmExports);
             removeRunDependency("wasm-instantiate");
             return wasmExports;
@@ -1815,6 +1815,11 @@ var require_web_ifc_node = __commonJS({
           type = requireRegisteredType(type, "_emval_take_value");
           var v = type["readValueFromPointer"](arg);
           return Emval.toHandle(v);
+        }
+        function __emval_typeof(handle) {
+          handle >>>= 0;
+          handle = Emval.toValue(handle);
+          return Emval.toHandle(typeof handle);
         }
         function __gmtime_js(time, tmPtr) {
           time = bigintToI53Checked(time);
@@ -3978,19 +3983,19 @@ var require_web_ifc_node = __commonJS({
         }
         var ___getTypeName, _malloc, _free, __emscripten_timeout, ___trap;
         function assignWasmExports(wasmExports2) {
-          ___getTypeName = wasmExports2["ba"];
-          _malloc = wasmExports2["ca"];
-          _free = wasmExports2["da"];
-          __emscripten_timeout = wasmExports2["fa"];
-          ___trap = wasmExports2["ga"];
+          ___getTypeName = wasmExports2["ca"];
+          _malloc = wasmExports2["da"];
+          _free = wasmExports2["ea"];
+          __emscripten_timeout = wasmExports2["ga"];
+          ___trap = wasmExports2["ha"];
         }
-        var wasmImports = { I: __abort_js, E: __embind_finalize_value_array, g: __embind_finalize_value_object, B: __embind_register_bigint, Y: __embind_register_bool, h: __embind_register_class, i: __embind_register_class_constructor, b: __embind_register_class_function, W: __embind_register_emval, A: __embind_register_float, c: __embind_register_function, s: __embind_register_integer, m: __embind_register_memory_view, q: __embind_register_optional, X: __embind_register_std_string, v: __embind_register_std_wstring, _: __embind_register_value_array, o: __embind_register_value_array_element, p: __embind_register_value_object, d: __embind_register_value_object_field, Z: __embind_register_void, G: __emscripten_runtime_keepalive_clear, k: __emval_as, x: __emval_call, a: __emval_decref, C: __emval_get_global, w: __emval_get_method_caller, l: __emval_get_property, r: __emval_incref, D: __emval_instanceof, u: __emval_is_number, z: __emval_is_string, y: __emval_new_array, f: __emval_new_cstring, t: __emval_new_object, j: __emval_run_destructors, n: __emval_set_property, e: __emval_take_value, Q: __gmtime_js, R: __localtime_js, H: __setitimer_js, S: __tzset_js, L: _clock_time_get, M: _emscripten_resize_heap, U: _environ_get, V: _environ_sizes_get, P: _fd_close, T: _fd_fdstat_get, K: _fd_read, N: _fd_seek, O: _fd_write, F: _proc_exit, J: _random_get };
+        var wasmImports = { J: __abort_js, F: __embind_finalize_value_array, j: __embind_finalize_value_object, E: __embind_register_bigint, Z: __embind_register_bool, l: __embind_register_class, k: __embind_register_class_constructor, b: __embind_register_class_function, X: __embind_register_emval, D: __embind_register_float, c: __embind_register_function, u: __embind_register_integer, m: __embind_register_memory_view, r: __embind_register_optional, Y: __embind_register_std_string, z: __embind_register_std_wstring, $: __embind_register_value_array, o: __embind_register_value_array_element, p: __embind_register_value_object, e: __embind_register_value_object_field, _: __embind_register_void, H: __emscripten_runtime_keepalive_clear, h: __emval_as, B: __emval_call, a: __emval_decref, s: __emval_get_global, A: __emval_get_method_caller, g: __emval_get_property, v: __emval_incref, t: __emval_instanceof, q: __emval_is_number, x: __emval_is_string, C: __emval_new_array, d: __emval_new_cstring, w: __emval_new_object, f: __emval_run_destructors, n: __emval_set_property, i: __emval_take_value, y: __emval_typeof, R: __gmtime_js, S: __localtime_js, I: __setitimer_js, T: __tzset_js, M: _clock_time_get, N: _emscripten_resize_heap, V: _environ_get, W: _environ_sizes_get, Q: _fd_close, U: _fd_fdstat_get, L: _fd_read, O: _fd_seek, P: _fd_write, G: _proc_exit, K: _random_get };
         var wasmExports = await createWasm();
         function applySignatureConversions(wasmExports2) {
           wasmExports2 = Object.assign({}, wasmExports2);
           var makeWrapper_pp = (f) => (a0) => f(a0) >>> 0;
-          wasmExports2["ba"] = makeWrapper_pp(wasmExports2["ba"]);
           wasmExports2["ca"] = makeWrapper_pp(wasmExports2["ca"]);
+          wasmExports2["da"] = makeWrapper_pp(wasmExports2["da"]);
           wasmExports2["_emscripten_stack_alloc"] = makeWrapper_pp(wasmExports2["_emscripten_stack_alloc"]);
           return wasmExports2;
         }
@@ -68069,6 +68074,7 @@ var IfcAPI2 = class {
         return srcSize;
       }
     );
+    if (result < 0) return -1;
     this.deletedLines.set(result, /* @__PURE__ */ new Set());
     const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
     if (typeof schemaName !== "string") {
@@ -68105,6 +68111,7 @@ var IfcAPI2 = class {
         return srcSize;
       }
     );
+    if (result < 0) return -1;
     this.deletedLines.set(result, /* @__PURE__ */ new Set());
     const schemaName = this.GetHeaderLine(result, FILE_SCHEMA)?.arguments?.[0]?.[0]?.value;
     if (typeof schemaName !== "string") {

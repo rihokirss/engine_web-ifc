@@ -1,6 +1,6 @@
 {
   "name": "web-ifc",
-  "version": "0.0.78+structura.2",
+  "version": "0.0.78+structura.3",
   "description": "ifc loading on the web",
   "module": "./web-ifc-api.js",
   "main": "./web-ifc-api-node.js",
@@ -35,5 +35,5 @@
     "fs": false
   },
   "types": "./web-ifc-api.d.ts",
-  "structuraSourceCommit": "614a95ca86448b05d1bf93ffe2df832736a034f2"
+  "structuraSourceCommit": "e3c1df8bed33c23947472e7bfadcb239a4327b95"
 }

@@ -1,9 +1,9 @@
 # web-ifc for Structura
 
-Prebuilt from source commit `614a95ca86448b05d1bf93ffe2df832736a034f2`.
+Prebuilt from source commit `e3c1df8bed33c23947472e7bfadcb239a4327b95` (`codex/source-structura-3`).
 
-Built with the existing upstream `npm run build-release` pipeline and `WEB_IFC_WASM_NATIVE_EXCEPTIONS=ON`. Native WebAssembly exceptions and SIMD support are required. C++ exception recovery remains enabled.
+Includes six measured performance changes and the PR follow-up fixes recorded in build-info.json.
 
-Includes matching Node and browser ESM/IIFE APIs, declarations and all three WASM assets. API bundles select the single-thread runtime even on isolated pages to avoid the existing worker bootstrap issue. The multithread asset remains available for export compatibility.
+Built with upstream npm run build-release, Emscripten 4.0.10, native WASM exceptions, SIMD and LTO. Node/browser bundles retain the existing single-thread selection, including on isolated pages. Native WebAssembly exception and SIMD support are required. The MT asset is included for export compatibility.
 
-No npm lifecycle hooks or C++ toolchain are required on installation. Pin the exact release commit; see build-info.json for build provenance and hashes.
+No install hooks or C++ toolchain are required. Pin the exact release commit. Re-import IFC files to apply geometry fixes to existing saved fragments.
