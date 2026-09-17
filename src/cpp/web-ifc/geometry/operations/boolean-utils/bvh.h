@@ -88,6 +88,22 @@ namespace fuzzybools
             }
         }
 
+        bool IntersectsBox(const AABB& query, uint32_t nodeID = 0) const
+        {
+            if (nodes.empty()) return false;
+            const auto& node = nodes[nodeID];
+            if (!node.box.intersects(query)) return false;
+            if (node.IsLeaf())
+            {
+                for (uint32_t i = node.start; i < node.end; i++)
+                {
+                    if (boxes[i].intersects(query)) return true;
+                }
+                return false;
+            }
+            return IntersectsBox(query, node.left) || IntersectsBox(query, node.right);
+        }
+
         template <typename T>
         bool IntersectRay(const glm::dvec3& origin, const glm::dvec3& dir, T callback)
         {
