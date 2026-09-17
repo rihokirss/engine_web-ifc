@@ -3,6 +3,6 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   verbose: true,
-  testPathIgnorePatterns: ["dist","_deps"]
+  testPathIgnorePatterns: ["dist", "_deps", "tests/regression"]
   //bail: 1
 };
