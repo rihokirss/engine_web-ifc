@@ -29,13 +29,13 @@ var require_web_ifc_node = __commonJS({
   "dist/web-ifc-node.js"(exports2, module2) {
     "use strict";
     var WebIFCWasm2 = (() => {
-      var _scriptName = typeof document != "undefined" ? document.currentScript?.src : void 0;
-      return (async function(moduleArg = {}) {
+      var _scriptName = globalThis.document?.currentScript?.src;
+      return async function(moduleArg = {}) {
         var moduleRtn;
         var Module = moduleArg;
-        var ENVIRONMENT_IS_WEB = typeof window == "object";
-        var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != "undefined";
-        var ENVIRONMENT_IS_NODE = typeof process == "object" && process.versions?.node && process.type != "renderer";
+        var ENVIRONMENT_IS_WEB = !!globalThis.window;
+        var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
+        var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
         var arguments_ = [];
         var thisProgram = "./this.program";
         var quit_ = (status, toThrow) => {
@@ -123,7 +123,6 @@ var require_web_ifc_node = __commonJS({
         var EXITSTATUS;
         var isFileURI = (filename) => filename.startsWith("file://");
         var readyPromiseResolve, readyPromiseReject;
-        var wasmMemory;
         var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
         var HEAP64, HEAPU64;
         var runtimeInitialized = false;
@@ -153,7 +152,7 @@ var require_web_ifc_node = __commonJS({
           runtimeInitialized = true;
           if (!Module["noFSInit"] && !FS.initialized) FS.init();
           TTY.init();
-          wasmExports["ba"]();
+          wasmExports["$"]();
           FS.ignorePermissions = false;
         }
         function postRun() {
@@ -164,23 +163,6 @@ var require_web_ifc_node = __commonJS({
             }
           }
           callRuntimeCallbacks(onPostRuns);
-        }
-        var runDependencies = 0;
-        var dependenciesFulfilled = null;
-        function addRunDependency(id) {
-          runDependencies++;
-          Module["monitorRunDependencies"]?.(runDependencies);
-        }
-        function removeRunDependency(id) {
-          runDependencies--;
-          Module["monitorRunDependencies"]?.(runDependencies);
-          if (runDependencies == 0) {
-            if (dependenciesFulfilled) {
-              var callback = dependenciesFulfilled;
-              dependenciesFulfilled = null;
-              callback();
-            }
-          }
         }
         function abort(what) {
           Module["onAbort"]?.(what);
@@ -229,7 +211,7 @@ var require_web_ifc_node = __commonJS({
           }
         }
         async function instantiateAsync(binary, binaryFile, imports) {
-          if (!binary && typeof WebAssembly.instantiateStreaming == "function" && !isFileURI(binaryFile) && !ENVIRONMENT_IS_NODE) {
+          if (!binary && !isFileURI(binaryFile) && !ENVIRONMENT_IS_NODE) {
             try {
               var response = fetch(binaryFile, { credentials: "same-origin" });
               var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
@@ -242,28 +224,25 @@ var require_web_ifc_node = __commonJS({
           return instantiateArrayBuffer(binaryFile, imports);
         }
         function getWasmImports() {
-          return { a: wasmImports };
+          var imports = { a: wasmImports };
+          return imports;
         }
         async function createWasm() {
           function receiveInstance(instance, module3) {
             wasmExports = instance.exports;
             wasmExports = applySignatureConversions(wasmExports);
-            wasmMemory = wasmExports["aa"];
-            updateMemoryViews();
-            wasmTable = wasmExports["fa"];
             assignWasmExports(wasmExports);
-            removeRunDependency("wasm-instantiate");
+            updateMemoryViews();
             return wasmExports;
           }
-          addRunDependency("wasm-instantiate");
           function receiveInstantiationResult(result2) {
             return receiveInstance(result2["instance"]);
           }
           var info = getWasmImports();
           if (Module["instantiateWasm"]) {
             return new Promise((resolve, reject) => {
-              Module["instantiateWasm"](info, (mod, inst) => {
-                resolve(receiveInstance(mod, inst));
+              Module["instantiateWasm"](info, (inst, mod) => {
+                resolve(receiveInstance(inst, mod));
               });
             });
           }
@@ -299,7 +278,7 @@ var require_web_ifc_node = __commonJS({
           }
         };
         function readPointer(pointer) {
-          return this["fromWireType"](HEAPU32[pointer >>> 2 >>> 0]);
+          return this.fromWireType(HEAPU32[pointer >>> 2 >>> 0]);
         }
         var awaitingDependencies = {};
         var registeredTypes = {};
@@ -327,7 +306,7 @@ var require_web_ifc_node = __commonJS({
           var typeConverters = new Array(dependentTypes.length);
           var unregisteredTypes = [];
           var registered = 0;
-          dependentTypes.forEach((dt, i) => {
+          for (let [i, dt] of dependentTypes.entries()) {
             if (registeredTypes.hasOwnProperty(dt)) {
               typeConverters[i] = registeredTypes[dt];
             } else {
@@ -343,7 +322,7 @@ var require_web_ifc_node = __commonJS({
                 }
               });
             }
-          });
+          }
           if (0 === unregisteredTypes.length) {
             onComplete(typeConverters);
           }
@@ -361,20 +340,20 @@ var require_web_ifc_node = __commonJS({
           var rawConstructor = reg.rawConstructor;
           var rawDestructor = reg.rawDestructor;
           whenDependentTypesAreResolved([rawTupleType], elementTypes, (elementTypes2) => {
-            elements.forEach((elt, i) => {
-              var getterReturnType = elementTypes2[i];
-              var getter = elt.getter;
-              var getterContext = elt.getterContext;
-              var setterArgumentType = elementTypes2[i + elementsLength];
-              var setter = elt.setter;
-              var setterContext = elt.setterContext;
-              elt.read = (ptr) => getterReturnType["fromWireType"](getter(getterContext, ptr));
+            for (const [i, elt] of elements.entries()) {
+              const getterReturnType = elementTypes2[i];
+              const getter = elt.getter;
+              const getterContext = elt.getterContext;
+              const setterArgumentType = elementTypes2[i + elementsLength];
+              const setter = elt.setter;
+              const setterContext = elt.setterContext;
+              elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
               elt.write = (ptr, o) => {
                 var destructors = [];
-                setter(setterContext, ptr, setterArgumentType["toWireType"](destructors, o));
+                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
                 runDestructors(destructors);
               };
-            });
+            }
             return [{ name: reg.name, fromWireType: (ptr) => {
               var rv = new Array(elementsLength);
               for (var i = 0; i < elementsLength; ++i) {
@@ -394,7 +373,7 @@ var require_web_ifc_node = __commonJS({
                 destructors.push(rawDestructor, ptr);
               }
               return ptr;
-            }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, destructorFunction: rawDestructor }];
+            }, readValueFromPointer: readPointer, destructorFunction: rawDestructor }];
           });
         };
         var structRegistrations = {};
@@ -408,25 +387,23 @@ var require_web_ifc_node = __commonJS({
           var fieldTypes = fieldRecords.map((field) => field.getterReturnType).concat(fieldRecords.map((field) => field.setterArgumentType));
           whenDependentTypesAreResolved([structType], fieldTypes, (fieldTypes2) => {
             var fields = {};
-            fieldRecords.forEach((field, i) => {
-              var fieldName = field.fieldName;
-              var getterReturnType = fieldTypes2[i];
-              var optional = fieldTypes2[i].optional;
-              var getter = field.getter;
-              var getterContext = field.getterContext;
-              var setterArgumentType = fieldTypes2[i + fieldRecords.length];
-              var setter = field.setter;
-              var setterContext = field.setterContext;
-              fields[fieldName] = { read: (ptr) => getterReturnType["fromWireType"](getter(getterContext, ptr)), write: (ptr, o) => {
+            for (var [i, field] of fieldRecords.entries()) {
+              const getterReturnType = fieldTypes2[i];
+              const getter = field.getter;
+              const getterContext = field.getterContext;
+              const setterArgumentType = fieldTypes2[i + fieldRecords.length];
+              const setter = field.setter;
+              const setterContext = field.setterContext;
+              fields[field.fieldName] = { read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)), write: (ptr, o) => {
                 var destructors = [];
-                setter(setterContext, ptr, setterArgumentType["toWireType"](destructors, o));
+                setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
                 runDestructors(destructors);
-              }, optional };
-            });
+              }, optional: getterReturnType.optional };
+            }
             return [{ name: reg.name, fromWireType: (ptr) => {
               var rv = {};
-              for (var i in fields) {
-                rv[i] = fields[i].read(ptr);
+              for (var i2 in fields) {
+                rv[i2] = fields[i2].read(ptr);
               }
               rawDestructor(ptr);
               return rv;
@@ -444,7 +421,7 @@ var require_web_ifc_node = __commonJS({
                 destructors.push(rawDestructor, ptr);
               }
               return ptr;
-            }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, destructorFunction: rawDestructor }];
+            }, readValueFromPointer: readPointer, destructorFunction: rawDestructor }];
           });
         };
         var AsciiToString = (ptr) => {
@@ -519,9 +496,8 @@ var require_web_ifc_node = __commonJS({
               value = BigInt(value);
             }
             return value;
-          }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: integerReadValueFromPointer(name, size, !isUnsignedType), destructorFunction: null });
+          }, readValueFromPointer: integerReadValueFromPointer(name, size, !isUnsignedType), destructorFunction: null });
         };
-        var GenericWireTypeSize = 8;
         function __embind_register_bool(rawType, name, trueValue, falseValue) {
           rawType >>>= 0;
           name >>>= 0;
@@ -530,8 +506,8 @@ var require_web_ifc_node = __commonJS({
             return !!wt;
           }, toWireType: function(destructors, o) {
             return o ? trueValue : falseValue;
-          }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: function(pointer) {
-            return this["fromWireType"](HEAPU8[pointer >>> 0]);
+          }, readValueFromPointer: function(pointer) {
+            return this.fromWireType(HEAPU8[pointer >>> 0]);
           }, destructorFunction: null });
         }
         var shallowCopyInternalPointer = (o) => ({ count: o.count, deleteScheduled: o.deleteScheduled, preservePointerOnDelete: o.preservePointerOnDelete, ptr: o.ptr, ptrType: o.ptrType, smartPtr: o.smartPtr, smartPtrType: o.smartPtrType });
@@ -559,7 +535,7 @@ var require_web_ifc_node = __commonJS({
           }
         };
         var attachFinalizer = (handle) => {
-          if ("undefined" === typeof FinalizationRegistry) {
+          if (!globalThis.FinalizationRegistry) {
             attachFinalizer = (handle2) => handle2;
             return handle;
           }
@@ -802,7 +778,7 @@ var require_web_ifc_node = __commonJS({
                 }
                 break;
               default:
-                throwBindingError("Unsupporting sharing policy");
+                throwBindingError("Unsupported sharing policy");
             }
           }
           return ptr;
@@ -921,7 +897,7 @@ var require_web_ifc_node = __commonJS({
             return ptr;
           }, destructor(ptr) {
             this.rawDestructor?.(ptr);
-          }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, fromWireType: RegisteredPointer_fromWireType });
+          }, readValueFromPointer: readPointer, fromWireType: RegisteredPointer_fromWireType });
         };
         function RegisteredPointer(name, registeredClass, isReference, isConst, isSmartPointer, pointeeType, sharingPolicy, rawGetPointee, rawConstructor, rawShare, rawDestructor) {
           this.name = name;
@@ -937,14 +913,14 @@ var require_web_ifc_node = __commonJS({
           this.rawDestructor = rawDestructor;
           if (!isSmartPointer && registeredClass.baseClass === void 0) {
             if (isConst) {
-              this["toWireType"] = constNoSmartPtrRawPointerToWireType;
+              this.toWireType = constNoSmartPtrRawPointerToWireType;
               this.destructorFunction = null;
             } else {
-              this["toWireType"] = nonConstNoSmartPtrRawPointerToWireType;
+              this.toWireType = nonConstNoSmartPtrRawPointerToWireType;
               this.destructorFunction = null;
             }
           } else {
-            this["toWireType"] = genericPointerToWireType;
+            this.toWireType = genericPointerToWireType;
           }
         }
         var replacePublicSymbol = (name, value, numArguments) => {
@@ -959,7 +935,6 @@ var require_web_ifc_node = __commonJS({
           }
         };
         var wasmTableMirror = [];
-        var wasmTable;
         var getWasmTableEntry = (funcPtr) => {
           var func = wasmTableMirror[funcPtr];
           if (!func) {
@@ -1102,7 +1077,7 @@ var require_web_ifc_node = __commonJS({
           }
           var isClassMethodFunc = argTypes[1] !== null && classType !== null;
           var needsDestructorStack = usesDestructorStack(argTypes);
-          var returns = argTypes[0].name !== "void";
+          var returns = !argTypes[0].isVoid;
           var expectedArgCount = argCount - 2;
           var argsWired = new Array(expectedArgCount);
           var invokerFuncArgs = [];
@@ -1113,11 +1088,11 @@ var require_web_ifc_node = __commonJS({
             invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
             invokerFuncArgs[0] = cppTargetFunc;
             if (isClassMethodFunc) {
-              thisWired = argTypes[1]["toWireType"](destructors, this);
+              thisWired = argTypes[1].toWireType(destructors, this);
               invokerFuncArgs[1] = thisWired;
             }
             for (var i = 0; i < expectedArgCount; ++i) {
-              argsWired[i] = argTypes[i + 2]["toWireType"](destructors, args[i]);
+              argsWired[i] = argTypes[i + 2].toWireType(destructors, args[i]);
               invokerFuncArgs.push(argsWired[i]);
             }
             var rv = cppInvokerFunc(...invokerFuncArgs);
@@ -1133,7 +1108,7 @@ var require_web_ifc_node = __commonJS({
                 }
               }
               if (returns) {
-                return argTypes[0]["fromWireType"](rv2);
+                return argTypes[0].fromWireType(rv2);
               }
             }
             return onDone(rv);
@@ -1256,7 +1231,7 @@ var require_web_ifc_node = __commonJS({
           var rv = Emval.toValue(handle);
           __emval_decref(handle);
           return rv;
-        }, toWireType: (destructors, value) => Emval.toHandle(value), argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, destructorFunction: null };
+        }, toWireType: (destructors, value) => Emval.toHandle(value), readValueFromPointer: readPointer, destructorFunction: null };
         function __embind_register_emval(rawType) {
           rawType >>>= 0;
           return registerType(rawType, EmValType);
@@ -1265,11 +1240,11 @@ var require_web_ifc_node = __commonJS({
           switch (width) {
             case 4:
               return function(pointer) {
-                return this["fromWireType"](HEAPF32[pointer >>> 2 >>> 0]);
+                return this.fromWireType(HEAPF32[pointer >>> 2 >>> 0]);
               };
             case 8:
               return function(pointer) {
-                return this["fromWireType"](HEAPF64[pointer >>> 3 >>> 0]);
+                return this.fromWireType(HEAPF64[pointer >>> 3 >>> 0]);
               };
             default:
               throw new TypeError(`invalid float width (${width}): ${name}`);
@@ -1280,7 +1255,7 @@ var require_web_ifc_node = __commonJS({
           name >>>= 0;
           size >>>= 0;
           name = AsciiToString(name);
-          registerType(rawType, { name, fromWireType: (value) => value, toWireType: (destructors, value) => value, argPackAdvance: GenericWireTypeSize, readValueFromPointer: floatReadValueFromPointer(name, size), destructorFunction: null });
+          registerType(rawType, { name, fromWireType: (value) => value, toWireType: (destructors, value) => value, readValueFromPointer: floatReadValueFromPointer(name, size), destructorFunction: null });
         };
         function __embind_register_function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) {
           name >>>= 0;
@@ -1313,7 +1288,7 @@ var require_web_ifc_node = __commonJS({
             fromWireType = (value) => value << bitshift >>> bitshift;
             maxRange = fromWireType(maxRange);
           }
-          registerType(primitiveType, { name, fromWireType, toWireType: (destructors, value) => value, argPackAdvance: GenericWireTypeSize, readValueFromPointer: integerReadValueFromPointer(name, size, minRange !== 0), destructorFunction: null });
+          registerType(primitiveType, { name, fromWireType, toWireType: (destructors, value) => value, readValueFromPointer: integerReadValueFromPointer(name, size, minRange !== 0), destructorFunction: null });
         };
         function __embind_register_memory_view(rawType, dataTypeIndex, name) {
           rawType >>>= 0;
@@ -1326,7 +1301,7 @@ var require_web_ifc_node = __commonJS({
             return new TA(HEAP8.buffer, data, size);
           }
           name = AsciiToString(name);
-          registerType(rawType, { name, fromWireType: decodeMemoryView, argPackAdvance: GenericWireTypeSize, readValueFromPointer: decodeMemoryView }, { ignoreDuplicateRegistrations: true });
+          registerType(rawType, { name, fromWireType: decodeMemoryView, readValueFromPointer: decodeMemoryView }, { ignoreDuplicateRegistrations: true });
         }
         var EmValOptionalType = Object.assign({ optional: true }, EmValType);
         function __embind_register_optional(rawOptionalType, rawType) {
@@ -1383,12 +1358,16 @@ var require_web_ifc_node = __commonJS({
           }
           return len;
         };
-        var UTF8Decoder = typeof TextDecoder != "undefined" ? new TextDecoder() : void 0;
-        var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead = NaN) => {
+        var UTF8Decoder = globalThis.TextDecoder && new TextDecoder();
+        var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+          var maxIdx = idx + maxBytesToRead;
+          if (ignoreNul) return maxIdx;
+          while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
+          return idx;
+        };
+        var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
           idx >>>= 0;
-          var endIdx = idx + maxBytesToRead;
-          var endPtr = idx;
-          while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
+          var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
           if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
             return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
           }
@@ -1419,9 +1398,9 @@ var require_web_ifc_node = __commonJS({
           }
           return str;
         };
-        var UTF8ToString = (ptr, maxBytesToRead) => {
+        var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => {
           ptr >>>= 0;
-          return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : "";
+          return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
         };
         function __embind_register_std_string(rawType, name) {
           rawType >>>= 0;
@@ -1433,27 +1412,12 @@ var require_web_ifc_node = __commonJS({
             var payload = value + 4;
             var str;
             if (stdStringIsUTF8) {
-              var decodeStartPtr = payload;
-              for (var i = 0; i <= length; ++i) {
-                var currentBytePtr = payload + i;
-                if (i == length || HEAPU8[currentBytePtr >>> 0] == 0) {
-                  var maxRead = currentBytePtr - decodeStartPtr;
-                  var stringSegment = UTF8ToString(decodeStartPtr, maxRead);
-                  if (str === void 0) {
-                    str = stringSegment;
-                  } else {
-                    str += String.fromCharCode(0);
-                    str += stringSegment;
-                  }
-                  decodeStartPtr = currentBytePtr + 1;
-                }
-              }
+              str = UTF8ToString(payload, length, true);
             } else {
-              var a = new Array(length);
+              str = "";
               for (var i = 0; i < length; ++i) {
-                a[i] = String.fromCharCode(HEAPU8[payload + i >>> 0]);
+                str += String.fromCharCode(HEAPU8[payload + i >>> 0]);
               }
-              str = a.join("");
             }
             _free(value);
             return str;
@@ -1494,21 +1458,18 @@ var require_web_ifc_node = __commonJS({
               destructors.push(_free, base);
             }
             return base;
-          }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, destructorFunction(ptr) {
+          }, readValueFromPointer: readPointer, destructorFunction(ptr) {
             _free(ptr);
           } });
         }
-        var UTF16Decoder = typeof TextDecoder != "undefined" ? new TextDecoder("utf-16le") : void 0;
-        var UTF16ToString = (ptr, maxBytesToRead) => {
+        var UTF16Decoder = globalThis.TextDecoder ? new TextDecoder("utf-16le") : void 0;
+        var UTF16ToString = (ptr, maxBytesToRead, ignoreNul) => {
           var idx = ptr >>> 1;
-          var maxIdx = idx + maxBytesToRead / 2;
-          var endIdx = idx;
-          while (!(endIdx >= maxIdx) && HEAPU16[endIdx >>> 0]) ++endIdx;
+          var endIdx = findStringEnd(HEAPU16, idx, maxBytesToRead / 2, ignoreNul);
           if (endIdx - idx > 16 && UTF16Decoder) return UTF16Decoder.decode(HEAPU16.subarray(idx >>> 0, endIdx >>> 0));
           var str = "";
-          for (var i = idx; !(i >= maxIdx); ++i) {
+          for (var i = idx; i < endIdx; ++i) {
             var codeUnit = HEAPU16[i >>> 0];
-            if (codeUnit == 0) break;
             str += String.fromCharCode(codeUnit);
           }
           return str;
@@ -1528,11 +1489,12 @@ var require_web_ifc_node = __commonJS({
           return outPtr - startPtr;
         };
         var lengthBytesUTF16 = (str) => str.length * 2;
-        var UTF32ToString = (ptr, maxBytesToRead) => {
+        var UTF32ToString = (ptr, maxBytesToRead, ignoreNul) => {
           var str = "";
+          var startIdx = ptr >>> 2;
           for (var i = 0; !(i >= maxBytesToRead / 4); i++) {
-            var utf32 = HEAP32[ptr + i * 4 >>> 2 >>> 0];
-            if (!utf32) break;
+            var utf32 = HEAPU32[startIdx + i >>> 0];
+            if (!utf32 && !ignoreNul) break;
             str += String.fromCodePoint(utf32);
           }
           return str;
@@ -1566,41 +1528,24 @@ var require_web_ifc_node = __commonJS({
           }
           return len;
         };
-        var __embind_register_std_wstring = function(rawType, charSize, name) {
+        function __embind_register_std_wstring(rawType, charSize, name) {
           rawType >>>= 0;
           charSize >>>= 0;
           name >>>= 0;
           name = AsciiToString(name);
-          var decodeString, encodeString, readCharAt, lengthBytesUTF;
+          var decodeString, encodeString, lengthBytesUTF;
           if (charSize === 2) {
             decodeString = UTF16ToString;
             encodeString = stringToUTF16;
             lengthBytesUTF = lengthBytesUTF16;
-            readCharAt = (pointer) => HEAPU16[pointer >>> 1 >>> 0];
-          } else if (charSize === 4) {
+          } else {
             decodeString = UTF32ToString;
             encodeString = stringToUTF32;
             lengthBytesUTF = lengthBytesUTF32;
-            readCharAt = (pointer) => HEAPU32[pointer >>> 2 >>> 0];
           }
           registerType(rawType, { name, fromWireType: (value) => {
             var length = HEAPU32[value >>> 2 >>> 0];
-            var str;
-            var decodeStartPtr = value + 4;
-            for (var i = 0; i <= length; ++i) {
-              var currentBytePtr = value + 4 + i * charSize;
-              if (i == length || readCharAt(currentBytePtr) == 0) {
-                var maxReadBytes = currentBytePtr - decodeStartPtr;
-                var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
-                if (str === void 0) {
-                  str = stringSegment;
-                } else {
-                  str += String.fromCharCode(0);
-                  str += stringSegment;
-                }
-                decodeStartPtr = currentBytePtr + charSize;
-              }
-            }
+            var str = decodeString(value + 4, length * charSize, true);
             _free(value);
             return str;
           }, toWireType: (destructors, value) => {
@@ -1615,10 +1560,10 @@ var require_web_ifc_node = __commonJS({
               destructors.push(_free, ptr);
             }
             return ptr;
-          }, argPackAdvance: GenericWireTypeSize, readValueFromPointer: readPointer, destructorFunction(ptr) {
+          }, readValueFromPointer: readPointer, destructorFunction(ptr) {
             _free(ptr);
           } });
-        };
+        }
         function __embind_register_value_array(rawType, name, constructorSignature, rawConstructor, destructorSignature, rawDestructor) {
           rawType >>>= 0;
           name >>>= 0;
@@ -1666,12 +1611,18 @@ var require_web_ifc_node = __commonJS({
           rawType >>>= 0;
           name >>>= 0;
           name = AsciiToString(name);
-          registerType(rawType, { isVoid: true, name, argPackAdvance: 0, fromWireType: () => void 0, toWireType: (destructors, o) => void 0 });
+          registerType(rawType, { isVoid: true, name, fromWireType: () => void 0, toWireType: (destructors, o) => void 0 });
         };
         var runtimeKeepaliveCounter = 0;
         var __emscripten_runtime_keepalive_clear = () => {
           noExitRuntime = false;
           runtimeKeepaliveCounter = 0;
+        };
+        var emval_methodCallers = [];
+        var emval_addMethodCaller = (caller) => {
+          var id = emval_methodCallers.length;
+          emval_methodCallers.push(caller);
+          return id;
         };
         var requireRegisteredType = (rawType, humanName) => {
           var impl = registeredTypes[rawType];
@@ -1680,32 +1631,21 @@ var require_web_ifc_node = __commonJS({
           }
           return impl;
         };
-        var emval_returnValue = (returnType, destructorsRef, handle) => {
+        var emval_lookupTypes = (argCount, argTypes) => {
+          var a = new Array(argCount);
+          for (var i = 0; i < argCount; ++i) {
+            a[i] = requireRegisteredType(HEAPU32[argTypes + i * 4 >>> 2 >>> 0], `parameter ${i}`);
+          }
+          return a;
+        };
+        var emval_returnValue = (toReturnWire, destructorsRef, handle) => {
           var destructors = [];
-          var result = returnType["toWireType"](destructors, handle);
+          var result = toReturnWire(destructors, handle);
           if (destructors.length) {
             HEAPU32[destructorsRef >>> 2 >>> 0] = Emval.toHandle(destructors);
           }
           return result;
         };
-        function __emval_as(handle, returnType, destructorsRef) {
-          handle >>>= 0;
-          returnType >>>= 0;
-          destructorsRef >>>= 0;
-          handle = Emval.toValue(handle);
-          returnType = requireRegisteredType(returnType, "emval::as");
-          return emval_returnValue(returnType, destructorsRef, handle);
-        }
-        var emval_methodCallers = [];
-        function __emval_call(caller, handle, destructorsRef, args) {
-          caller >>>= 0;
-          handle >>>= 0;
-          destructorsRef >>>= 0;
-          args >>>= 0;
-          caller = emval_methodCallers[caller];
-          handle = Emval.toValue(handle);
-          return caller(null, handle, destructorsRef, args);
-        }
         var emval_symbols = {};
         var getStringOrSymbol = (address) => {
           var symbol = emval_symbols[address];
@@ -1714,46 +1654,48 @@ var require_web_ifc_node = __commonJS({
           }
           return symbol;
         };
-        var emval_get_global = () => globalThis;
-        function __emval_get_global(name) {
-          name >>>= 0;
-          if (name === 0) {
-            return Emval.toHandle(emval_get_global());
-          } else {
-            name = getStringOrSymbol(name);
-            return Emval.toHandle(emval_get_global()[name]);
-          }
-        }
-        var emval_addMethodCaller = (caller) => {
-          var id = emval_methodCallers.length;
-          emval_methodCallers.push(caller);
-          return id;
-        };
-        var emval_lookupTypes = (argCount, argTypes) => {
-          var a = new Array(argCount);
-          for (var i = 0; i < argCount; ++i) {
-            a[i] = requireRegisteredType(HEAPU32[argTypes + i * 4 >>> 2 >>> 0], `parameter ${i}`);
-          }
-          return a;
-        };
-        var __emval_get_method_caller = function(argCount, argTypes, kind) {
-          argTypes >>>= 0;
-          var types = emval_lookupTypes(argCount, argTypes);
-          var retType = types.shift();
+        var __emval_create_invoker = function(argCount, argTypesPtr, kind) {
+          argTypesPtr >>>= 0;
+          var GenericWireTypeSize = 8;
+          var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
+          var toReturnWire = retType.toWireType.bind(retType);
+          var argFromPtr = argTypes.map((type) => type.readValueFromPointer.bind(type));
           argCount--;
           var argN = new Array(argCount);
-          var invokerFunction = (obj, func, destructorsRef, args) => {
+          var invokerFunction = (handle, methodName, destructorsRef, args) => {
             var offset = 0;
             for (var i = 0; i < argCount; ++i) {
-              argN[i] = types[i]["readValueFromPointer"](args + offset);
-              offset += types[i].argPackAdvance;
+              argN[i] = argFromPtr[i](args + offset);
+              offset += GenericWireTypeSize;
             }
-            var rv = kind === 1 ? Reflect.construct(func, argN) : func.apply(obj, argN);
-            return emval_returnValue(retType, destructorsRef, rv);
+            var rv;
+            switch (kind) {
+              case 0:
+                rv = Emval.toValue(handle).apply(null, argN);
+                break;
+              case 2:
+                rv = Reflect.construct(Emval.toValue(handle), argN);
+                break;
+              case 3:
+                rv = argN[0];
+                break;
+              case 1:
+                rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
+                break;
+            }
+            return emval_returnValue(toReturnWire, destructorsRef, rv);
           };
-          var functionName = `methodCaller<(${types.map((t) => t.name).join(", ")}) => ${retType.name}>`;
+          var functionName = `methodCaller<(${argTypes.map((t) => t.name)}) => ${retType.name}>`;
           return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
         };
+        function __emval_get_global(name) {
+          name >>>= 0;
+          if (!name) {
+            return Emval.toHandle(globalThis);
+          }
+          name = getStringOrSymbol(name);
+          return Emval.toHandle(globalThis[name]);
+        }
         function __emval_get_property(handle, key) {
           handle >>>= 0;
           key >>>= 0;
@@ -1773,6 +1715,14 @@ var require_web_ifc_node = __commonJS({
           object = Emval.toValue(object);
           constructor = Emval.toValue(constructor);
           return object instanceof constructor;
+        }
+        function __emval_invoke(caller, handle, methodName, destructorsRef, args) {
+          caller >>>= 0;
+          handle >>>= 0;
+          methodName >>>= 0;
+          destructorsRef >>>= 0;
+          args >>>= 0;
+          return emval_methodCallers[caller](handle, methodName, destructorsRef, args);
         }
         function __emval_is_number(handle) {
           handle >>>= 0;
@@ -1808,13 +1758,6 @@ var require_web_ifc_node = __commonJS({
           key = Emval.toValue(key);
           value = Emval.toValue(value);
           handle[key] = value;
-        }
-        function __emval_take_value(type, arg) {
-          type >>>= 0;
-          arg >>>= 0;
-          type = requireRegisteredType(type, "_emval_take_value");
-          var v = type["readValueFromPointer"](arg);
-          return Emval.toHandle(v);
         }
         function __emval_typeof(handle) {
           handle >>>= 0;
@@ -1974,8 +1917,8 @@ var require_web_ifc_node = __commonJS({
         var getHeapMax = () => 4294901760;
         var alignMemory = (size, alignment) => Math.ceil(size / alignment) * alignment;
         var growMemory = (size) => {
-          var b = wasmMemory.buffer;
-          var pages = (size - b.byteLength + 65535) / 65536 | 0;
+          var oldHeapSize = wasmMemory.buffer.byteLength;
+          var pages = (size - oldHeapSize + 65535) / 65536 | 0;
           try {
             wasmMemory.grow(pages);
             updateMemoryViews();
@@ -2005,7 +1948,7 @@ var require_web_ifc_node = __commonJS({
         var getExecutableName = () => thisProgram || "./this.program";
         var getEnvStrings = () => {
           if (!getEnvStrings.strings) {
-            var lang = (typeof navigator == "object" && navigator.language || "C").replace("-", "_") + ".UTF-8";
+            var lang = (globalThis.navigator?.language ?? "C").replace("-", "_") + ".UTF-8";
             var env = { USER: "web_user", LOGNAME: "web_user", PATH: "/", PWD: "/", HOME: "/home/web_user", LANG: lang, _: getExecutableName() };
             for (var x in ENV) {
               if (ENV[x] === void 0) delete env[x];
@@ -2168,7 +2111,7 @@ var require_web_ifc_node = __commonJS({
               if (bytesRead > 0) {
                 result = buf.slice(0, bytesRead).toString("utf-8");
               }
-            } else if (typeof window != "undefined" && typeof window.prompt == "function") {
+            } else if (globalThis.window?.prompt) {
               result = window.prompt("Input: ");
               if (result !== null) {
                 result += "\n";
@@ -2362,6 +2305,10 @@ var require_web_ifc_node = __commonJS({
             MEMFS.resizeFileStorage(node, attr.size);
           }
         }, lookup(parent, name) {
+          if (!MEMFS.doesNotExistError) {
+            MEMFS.doesNotExistError = new FS.ErrnoError(44);
+            MEMFS.doesNotExistError.stack = "<generic error, no stack>";
+          }
           throw MEMFS.doesNotExistError;
         }, mknod(parent, name, mode, dev) {
           return MEMFS.createNode(parent, name, mode, dev);
@@ -2490,52 +2437,6 @@ var require_web_ifc_node = __commonJS({
           MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
           return 0;
         } } };
-        var asyncLoad = async (url) => {
-          var arrayBuffer = await readAsync(url);
-          return new Uint8Array(arrayBuffer);
-        };
-        var FS_createDataFile = (...args) => FS.createDataFile(...args);
-        var getUniqueRunDependency = (id) => id;
-        var preloadPlugins = [];
-        var FS_handledByPreloadPlugin = (byteArray, fullname, finish, onerror) => {
-          if (typeof Browser != "undefined") Browser.init();
-          var handled = false;
-          preloadPlugins.forEach((plugin) => {
-            if (handled) return;
-            if (plugin["canHandle"](fullname)) {
-              plugin["handle"](byteArray, fullname, finish, onerror);
-              handled = true;
-            }
-          });
-          return handled;
-        };
-        var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
-          var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-          var dep = getUniqueRunDependency(`cp ${fullname}`);
-          function processData(byteArray) {
-            function finish(byteArray2) {
-              preFinish?.();
-              if (!dontCreateFile) {
-                FS_createDataFile(parent, name, byteArray2, canRead, canWrite, canOwn);
-              }
-              onload?.();
-              removeRunDependency(dep);
-            }
-            if (FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
-              onerror?.();
-              removeRunDependency(dep);
-            })) {
-              return;
-            }
-            finish(byteArray);
-          }
-          addRunDependency(dep);
-          if (typeof url == "string") {
-            asyncLoad(url).then(processData, onerror);
-          } else {
-            processData(url);
-          }
-        };
         var FS_modeStringToFlags = (str) => {
           var flagModes = { r: 0, "r+": 2, w: 512 | 64 | 1, "w+": 512 | 64 | 2, a: 1024 | 64 | 1, "a+": 1024 | 64 | 2 };
           var flags = flagModes[str];
@@ -2549,6 +2450,60 @@ var require_web_ifc_node = __commonJS({
           if (canRead) mode |= 292 | 73;
           if (canWrite) mode |= 146;
           return mode;
+        };
+        var asyncLoad = async (url) => {
+          var arrayBuffer = await readAsync(url);
+          return new Uint8Array(arrayBuffer);
+        };
+        var FS_createDataFile = (...args) => FS.createDataFile(...args);
+        var getUniqueRunDependency = (id) => id;
+        var runDependencies = 0;
+        var dependenciesFulfilled = null;
+        var removeRunDependency = (id) => {
+          runDependencies--;
+          Module["monitorRunDependencies"]?.(runDependencies);
+          if (runDependencies == 0) {
+            if (dependenciesFulfilled) {
+              var callback = dependenciesFulfilled;
+              dependenciesFulfilled = null;
+              callback();
+            }
+          }
+        };
+        var addRunDependency = (id) => {
+          runDependencies++;
+          Module["monitorRunDependencies"]?.(runDependencies);
+        };
+        var preloadPlugins = [];
+        var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
+          if (typeof Browser != "undefined") Browser.init();
+          for (var plugin of preloadPlugins) {
+            if (plugin["canHandle"](fullname)) {
+              return plugin["handle"](byteArray, fullname);
+            }
+          }
+          return byteArray;
+        };
+        var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+          var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
+          var dep = getUniqueRunDependency(`cp ${fullname}`);
+          addRunDependency(dep);
+          try {
+            var byteArray = url;
+            if (typeof url == "string") {
+              byteArray = await asyncLoad(url);
+            }
+            byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+            preFinish?.();
+            if (!dontCreateFile) {
+              FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+            }
+          } finally {
+            removeRunDependency(dep);
+          }
+        };
+        var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+          FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
         };
         var FS = { root: null, mounts: [], devices: {}, streams: [], nextInode: 1, nameTable: null, currentPath: "/", initialized: false, ignorePermissions: true, filesystems: null, syncFSRequests: 0, readFiles: {}, ErrnoError: class {
           name = "ErrnoError";
@@ -2644,6 +2599,7 @@ var require_web_ifc_node = __commonJS({
                 current_path = PATH.dirname(current_path);
                 if (FS.isRoot(current)) {
                   path = current_path + "/" + parts.slice(i + 1).join("/");
+                  nlinks--;
                   continue linkloop;
                 } else {
                   current = current.parent;
@@ -2901,12 +2857,13 @@ var require_web_ifc_node = __commonJS({
               doCallback(null);
             }
           }
-          mounts.forEach((mount) => {
-            if (!mount.type.syncfs) {
-              return done(null);
+          for (var mount of mounts) {
+            if (mount.type.syncfs) {
+              mount.type.syncfs(mount, populate, done);
+            } else {
+              done(null);
             }
-            mount.type.syncfs(mount, populate, done);
-          });
+          }
         }, mount(type, opts, mountpoint) {
           var root = mountpoint === "/";
           var pseudo = !mountpoint;
@@ -2945,8 +2902,7 @@ var require_web_ifc_node = __commonJS({
           var node = lookup.node;
           var mount = node.mounted;
           var mounts = FS.getMounts(mount);
-          Object.keys(FS.nameTable).forEach((hash) => {
-            var current = FS.nameTable[hash];
+          for (var [hash, current] of Object.entries(FS.nameTable)) {
             while (current) {
               var next = current.name_next;
               if (mounts.includes(current.mount)) {
@@ -2954,7 +2910,7 @@ var require_web_ifc_node = __commonJS({
               }
               current = next;
             }
-          });
+          }
           node.mounted = null;
           var idx = node.mount.mounts.indexOf(mount);
           node.mount.mounts.splice(idx, 1);
@@ -3405,7 +3361,7 @@ var require_web_ifc_node = __commonJS({
           opts.flags = opts.flags || 0;
           opts.encoding = opts.encoding || "binary";
           if (opts.encoding !== "utf8" && opts.encoding !== "binary") {
-            throw new Error(`Invalid encoding type "${opts.encoding}"`);
+            abort(`Invalid encoding type "${opts.encoding}"`);
           }
           var stream = FS.open(path, opts.flags);
           var stat = FS.stat(path);
@@ -3426,7 +3382,7 @@ var require_web_ifc_node = __commonJS({
           if (ArrayBuffer.isView(data)) {
             FS.write(stream, data, 0, data.byteLength, void 0, opts.canOwn);
           } else {
-            throw new Error("Unsupported data type");
+            abort("Unsupported data type");
           }
           FS.close(stream);
         }, cwd: () => FS.currentPath, chdir(path) {
@@ -3638,12 +3594,11 @@ var require_web_ifc_node = __commonJS({
           return FS.mkdev(path, mode, dev);
         }, forceLoadFile(obj) {
           if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-          if (typeof XMLHttpRequest != "undefined") {
-            throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+          if (globalThis.XMLHttpRequest) {
+            abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
           } else {
             try {
               obj.contents = readBinary(obj.url);
-              obj.usedBytes = obj.contents.length;
             } catch (e) {
               throw new FS.ErrnoError(29);
             }
@@ -3667,7 +3622,7 @@ var require_web_ifc_node = __commonJS({
               var xhr = new XMLHttpRequest();
               xhr.open("HEAD", url, false);
               xhr.send(null);
-              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+              if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
               var datalength = Number(xhr.getResponseHeader("Content-length"));
               var header;
               var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
@@ -3675,8 +3630,8 @@ var require_web_ifc_node = __commonJS({
               var chunkSize = 1024 * 1024;
               if (!hasByteServing) chunkSize = datalength;
               var doXHR = (from, to) => {
-                if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-                if (to > datalength - 1) throw new Error("only " + datalength + " bytes available! programmer error!");
+                if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
+                if (to > datalength - 1) abort("only " + datalength + " bytes available! programmer error!");
                 var xhr2 = new XMLHttpRequest();
                 xhr2.open("GET", url, false);
                 if (datalength !== chunkSize) xhr2.setRequestHeader("Range", "bytes=" + from + "-" + to);
@@ -3685,7 +3640,7 @@ var require_web_ifc_node = __commonJS({
                   xhr2.overrideMimeType("text/plain; charset=x-user-defined");
                 }
                 xhr2.send(null);
-                if (!(xhr2.status >= 200 && xhr2.status < 300 || xhr2.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr2.status);
+                if (!(xhr2.status >= 200 && xhr2.status < 300 || xhr2.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr2.status);
                 if (xhr2.response !== void 0) {
                   return new Uint8Array(xhr2.response || []);
                 }
@@ -3699,7 +3654,7 @@ var require_web_ifc_node = __commonJS({
                 if (typeof lazyArray2.chunks[chunkNum] == "undefined") {
                   lazyArray2.chunks[chunkNum] = doXHR(start, end);
                 }
-                if (typeof lazyArray2.chunks[chunkNum] == "undefined") throw new Error("doXHR failed!");
+                if (typeof lazyArray2.chunks[chunkNum] == "undefined") abort("doXHR failed!");
                 return lazyArray2.chunks[chunkNum];
               });
               if (usesGzip || !datalength) {
@@ -3725,8 +3680,8 @@ var require_web_ifc_node = __commonJS({
               return this._chunkSize;
             }
           }
-          if (typeof XMLHttpRequest != "undefined") {
-            if (!ENVIRONMENT_IS_WORKER) throw "Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc";
+          if (globalThis.XMLHttpRequest) {
+            if (!ENVIRONMENT_IS_WORKER) abort("Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc");
             var lazyArray = new LazyUint8Array();
             var properties = { isDevice: false, contents: lazyArray };
           } else {
@@ -3743,14 +3698,12 @@ var require_web_ifc_node = __commonJS({
             return this.contents.length;
           } } });
           var stream_ops = {};
-          var keys = Object.keys(node.stream_ops);
-          keys.forEach((key) => {
-            var fn = node.stream_ops[key];
+          for (const [key, fn] of Object.entries(node.stream_ops)) {
             stream_ops[key] = (...args) => {
               FS.forceLoadFile(node);
               return fn(...args);
             };
-          });
+          }
           function writeChunks(stream, buffer, offset, length, position) {
             var contents = stream.node.contents;
             if (position >= contents.length) return 0;
@@ -3782,7 +3735,7 @@ var require_web_ifc_node = __commonJS({
           node.stream_ops = stream_ops;
           return node;
         } };
-        var SYSCALLS = { DEFAULT_POLLMASK: 5, calculateAt(dirfd, path, allowEmpty) {
+        var SYSCALLS = { calculateAt(dirfd, path, allowEmpty) {
           if (PATH.isAbs(path)) {
             return path;
           }
@@ -3801,12 +3754,12 @@ var require_web_ifc_node = __commonJS({
           }
           return dir + "/" + path;
         }, writeStat(buf, stat) {
-          HEAP32[buf >>> 2 >>> 0] = stat.dev;
-          HEAP32[buf + 4 >>> 2 >>> 0] = stat.mode;
+          HEAPU32[buf >>> 2 >>> 0] = stat.dev;
+          HEAPU32[buf + 4 >>> 2 >>> 0] = stat.mode;
           HEAPU32[buf + 8 >>> 2 >>> 0] = stat.nlink;
-          HEAP32[buf + 12 >>> 2 >>> 0] = stat.uid;
-          HEAP32[buf + 16 >>> 2 >>> 0] = stat.gid;
-          HEAP32[buf + 20 >>> 2 >>> 0] = stat.rdev;
+          HEAPU32[buf + 12 >>> 2 >>> 0] = stat.uid;
+          HEAPU32[buf + 16 >>> 2 >>> 0] = stat.gid;
+          HEAPU32[buf + 20 >>> 2 >>> 0] = stat.rdev;
           HEAP64[buf + 24 >>> 3 >>> 0] = BigInt(stat.size);
           HEAP32[buf + 32 >>> 2 >>> 0] = 4096;
           HEAP32[buf + 36 >>> 2 >>> 0] = stat.blocks;
@@ -3822,16 +3775,16 @@ var require_web_ifc_node = __commonJS({
           HEAP64[buf + 88 >>> 3 >>> 0] = BigInt(stat.ino);
           return 0;
         }, writeStatFs(buf, stats) {
-          HEAP32[buf + 4 >>> 2 >>> 0] = stats.bsize;
-          HEAP32[buf + 40 >>> 2 >>> 0] = stats.bsize;
-          HEAP32[buf + 8 >>> 2 >>> 0] = stats.blocks;
-          HEAP32[buf + 12 >>> 2 >>> 0] = stats.bfree;
-          HEAP32[buf + 16 >>> 2 >>> 0] = stats.bavail;
-          HEAP32[buf + 20 >>> 2 >>> 0] = stats.files;
-          HEAP32[buf + 24 >>> 2 >>> 0] = stats.ffree;
-          HEAP32[buf + 28 >>> 2 >>> 0] = stats.fsid;
-          HEAP32[buf + 44 >>> 2 >>> 0] = stats.flags;
-          HEAP32[buf + 36 >>> 2 >>> 0] = stats.namelen;
+          HEAPU32[buf + 4 >>> 2 >>> 0] = stats.bsize;
+          HEAPU32[buf + 60 >>> 2 >>> 0] = stats.bsize;
+          HEAP64[buf + 8 >>> 3 >>> 0] = BigInt(stats.blocks);
+          HEAP64[buf + 16 >>> 3 >>> 0] = BigInt(stats.bfree);
+          HEAP64[buf + 24 >>> 3 >>> 0] = BigInt(stats.bavail);
+          HEAP64[buf + 32 >>> 3 >>> 0] = BigInt(stats.files);
+          HEAP64[buf + 40 >>> 3 >>> 0] = BigInt(stats.ffree);
+          HEAPU32[buf + 48 >>> 2 >>> 0] = stats.fsid;
+          HEAPU32[buf + 64 >>> 2 >>> 0] = stats.flags;
+          HEAPU32[buf + 56 >>> 2 >>> 0] = stats.namelen;
         }, doMsync(addr, stream, len, flags, offset) {
           if (!FS.isFile(stream.node.mode)) {
             throw new FS.ErrnoError(43);
@@ -3969,9 +3922,8 @@ var require_web_ifc_node = __commonJS({
         init_ClassHandle();
         init_RegisteredPointer();
         FS.createPreloadedFile = FS_createPreloadedFile;
+        FS.preloadFile = FS_preloadFile;
         FS.staticInit();
-        MEMFS.doesNotExistError = new FS.ErrnoError(44);
-        MEMFS.doesNotExistError.stack = "<generic error, no stack>";
         {
           if (Module["noExitRuntime"]) noExitRuntime = Module["noExitRuntime"];
           if (Module["preloadPlugins"]) preloadPlugins = Module["preloadPlugins"];
@@ -3980,22 +3932,29 @@ var require_web_ifc_node = __commonJS({
           if (Module["wasmBinary"]) wasmBinary = Module["wasmBinary"];
           if (Module["arguments"]) arguments_ = Module["arguments"];
           if (Module["thisProgram"]) thisProgram = Module["thisProgram"];
+          if (Module["preInit"]) {
+            if (typeof Module["preInit"] == "function") Module["preInit"] = [Module["preInit"]];
+            while (Module["preInit"].length > 0) {
+              Module["preInit"].shift()();
+            }
+          }
         }
-        var ___getTypeName, _malloc, _free, __emscripten_timeout, ___trap;
+        var ___getTypeName, _malloc, _free, __emscripten_timeout, ___trap, memory, __indirect_function_table, wasmMemory, wasmTable;
         function assignWasmExports(wasmExports2) {
-          ___getTypeName = wasmExports2["ca"];
-          _malloc = wasmExports2["da"];
-          _free = wasmExports2["ea"];
-          __emscripten_timeout = wasmExports2["ga"];
-          ___trap = wasmExports2["ha"];
+          ___getTypeName = wasmExports2["aa"];
+          _malloc = wasmExports2["ba"];
+          _free = wasmExports2["ca"];
+          __emscripten_timeout = wasmExports2["ea"];
+          ___trap = wasmExports2["fa"];
+          memory = wasmMemory = wasmExports2["_"];
+          __indirect_function_table = wasmTable = wasmExports2["da"];
         }
-        var wasmImports = { J: __abort_js, F: __embind_finalize_value_array, j: __embind_finalize_value_object, E: __embind_register_bigint, Z: __embind_register_bool, l: __embind_register_class, k: __embind_register_class_constructor, b: __embind_register_class_function, X: __embind_register_emval, D: __embind_register_float, c: __embind_register_function, u: __embind_register_integer, m: __embind_register_memory_view, r: __embind_register_optional, Y: __embind_register_std_string, z: __embind_register_std_wstring, $: __embind_register_value_array, o: __embind_register_value_array_element, p: __embind_register_value_object, e: __embind_register_value_object_field, _: __embind_register_void, H: __emscripten_runtime_keepalive_clear, h: __emval_as, B: __emval_call, a: __emval_decref, s: __emval_get_global, A: __emval_get_method_caller, g: __emval_get_property, v: __emval_incref, t: __emval_instanceof, q: __emval_is_number, x: __emval_is_string, C: __emval_new_array, d: __emval_new_cstring, w: __emval_new_object, f: __emval_run_destructors, n: __emval_set_property, i: __emval_take_value, y: __emval_typeof, R: __gmtime_js, S: __localtime_js, I: __setitimer_js, T: __tzset_js, M: _clock_time_get, N: _emscripten_resize_heap, V: _environ_get, W: _environ_sizes_get, Q: _fd_close, U: _fd_fdstat_get, L: _fd_read, O: _fd_seek, P: _fd_write, G: _proc_exit, K: _random_get };
-        var wasmExports = await createWasm();
+        var wasmImports = { H: __abort_js, D: __embind_finalize_value_array, k: __embind_finalize_value_object, C: __embind_register_bigint, X: __embind_register_bool, m: __embind_register_class, l: __embind_register_class_constructor, b: __embind_register_class_function, V: __embind_register_emval, B: __embind_register_float, f: __embind_register_function, v: __embind_register_integer, n: __embind_register_memory_view, r: __embind_register_optional, W: __embind_register_std_string, z: __embind_register_std_wstring, Z: __embind_register_value_array, o: __embind_register_value_array_element, p: __embind_register_value_object, i: __embind_register_value_object_field, Y: __embind_register_void, F: __emscripten_runtime_keepalive_clear, e: __emval_create_invoker, a: __emval_decref, s: __emval_get_global, g: __emval_get_property, j: __emval_incref, u: __emval_instanceof, d: __emval_invoke, q: __emval_is_number, x: __emval_is_string, A: __emval_new_array, h: __emval_new_cstring, w: __emval_new_object, c: __emval_run_destructors, t: __emval_set_property, y: __emval_typeof, P: __gmtime_js, Q: __localtime_js, G: __setitimer_js, R: __tzset_js, K: _clock_time_get, L: _emscripten_resize_heap, T: _environ_get, U: _environ_sizes_get, O: _fd_close, S: _fd_fdstat_get, J: _fd_read, M: _fd_seek, N: _fd_write, E: _proc_exit, I: _random_get };
         function applySignatureConversions(wasmExports2) {
           wasmExports2 = Object.assign({}, wasmExports2);
           var makeWrapper_pp = (f) => (a0) => f(a0) >>> 0;
-          wasmExports2["ca"] = makeWrapper_pp(wasmExports2["ca"]);
-          wasmExports2["da"] = makeWrapper_pp(wasmExports2["da"]);
+          wasmExports2["aa"] = makeWrapper_pp(wasmExports2["aa"]);
+          wasmExports2["ba"] = makeWrapper_pp(wasmExports2["ba"]);
           wasmExports2["_emscripten_stack_alloc"] = makeWrapper_pp(wasmExports2["_emscripten_stack_alloc"]);
           return wasmExports2;
         }
@@ -4027,15 +3986,8 @@ var require_web_ifc_node = __commonJS({
             doRun();
           }
         }
-        function preInit() {
-          if (Module["preInit"]) {
-            if (typeof Module["preInit"] == "function") Module["preInit"] = [Module["preInit"]];
-            while (Module["preInit"].length > 0) {
-              Module["preInit"].shift()();
-            }
-          }
-        }
-        preInit();
+        var wasmExports;
+        wasmExports = await createWasm();
         run();
         if (runtimeInitialized) {
           moduleRtn = Module;
@@ -4045,14 +3997,14 @@ var require_web_ifc_node = __commonJS({
             readyPromiseReject = reject;
           });
         }
+        ;
         return moduleRtn;
-      });
+      };
     })();
     if (typeof exports2 === "object" && typeof module2 === "object") {
       module2.exports = WebIFCWasm2;
       module2.exports.default = WebIFCWasm2;
-    } else if (typeof define === "function" && define["amd"])
-      define([], () => WebIFCWasm2);
+    } else if (typeof define === "function" && define["amd"]) define([], () => WebIFCWasm2);
   }
 });
 
@@ -68018,6 +67970,7 @@ var IfcAPI2 = class {
   }
   CreateSettings(settings) {
     let s = {
+      ALLOW_INCOMPATIBLE_SCHEMA_ALIASES: true,
       COORDINATE_TO_ORIGIN: false,
       CIRCLE_SEGMENTS: 12,
       TAPE_SIZE: 67108864,
@@ -68034,7 +67987,7 @@ var IfcAPI2 = class {
     };
     return s;
   }
-  LookupSchemaId(schemaName, allowIncompatibleAlias = false) {
+  LookupSchemaId(schemaName, allowIncompatibleAlias = true) {
     const name = schemaName.toUpperCase();
     for (var i = 0; i < SchemaNames.length; i++) {
       if (typeof SchemaNames[i] !== "undefined") {
@@ -68044,7 +67997,7 @@ var IfcAPI2 = class {
             const compatible = name === canonical || name === "IFC4X3_ADD2";
             if (!compatible) {
               if (!allowIncompatibleAlias) {
-                Log.error(`Schema ${name} requires an incompatible ${canonical} alias. Set ALLOW_INCOMPATIBLE_SCHEMA_ALIASES only for explicit best-effort parsing.`);
+                Log.error(`Schema ${name} requires an incompatible ${canonical} alias. Set ALLOW_INCOMPATIBLE_SCHEMA_ALIASES to true to allow best-effort parsing.`);
                 return -1;
               }
               Log.warn(`Parsing ${name} using ${canonical}; entity and attribute layouts may differ.`);

@@ -39,8 +39,9 @@ export declare const BINARY = 11;
  * @property {number} BOOLEAN_UNION_THRESHOLD - Minimum number of solids before triggering a boolean union operation.
  */
 export interface LoaderSettings {
-    /** Opt into parsing older/preview schemas using incompatible generated layouts.
-     * Defaults to false. This does not provide full support for the named schema.
+    /** Allow best-effort parsing of older/preview schemas using incompatible generated layouts.
+     * Defaults to true for backward compatibility. Set false to reject these aliases.
+     * This does not provide full support for the named schema.
      */
     ALLOW_INCOMPATIBLE_SCHEMA_ALIASES?: boolean;
     COORDINATE_TO_ORIGIN?: boolean;
