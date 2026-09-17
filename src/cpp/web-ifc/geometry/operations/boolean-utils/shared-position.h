@@ -939,13 +939,13 @@ namespace fuzzybools
 
         //============================================================================================
 
-        void Construct(const Geometry &A, const Geometry &B, bool isUnion)
+        void Construct(const Geometry &A, const Geometry &B, const BVH &bvhA, const BVH &bvhB, bool isUnion)
         {
             auto boxA = A.GetAABB();
             auto boxB = B.GetAABB();
 
-            AddGeometry(A, B, boxB, true, isUnion, 0);
-            AddGeometry(B, A, boxA, false, isUnion, A.planes.size());
+            AddGeometry(A, bvhB, boxB, true, isUnion, 0);
+            AddGeometry(B, bvhA, boxA, false, isUnion, A.planes.size());
 
             _linkedA = &A;
             _linkedB = &B;
@@ -953,7 +953,7 @@ namespace fuzzybools
 
         //============================================================================================
 
-        void AddGeometry(const Geometry &geom, const Geometry &secondGeom, const AABB &relevantBounds, bool isA, bool isUnion, uint32_t offsetPlane)
+        void AddGeometry(const Geometry &geom, const BVH &secondBVH, const AABB &relevantBounds, bool isA, bool isUnion, uint32_t offsetPlane)
         {
 #ifdef CSG_DEBUG_OUTPUT
             Geometry relevant;
@@ -979,18 +979,7 @@ namespace fuzzybools
                     continue;
                 }
 
-                bool contact = false;
-
-                for (size_t j = 0; j < secondGeom.numFaces; j++)
-                {
-                    auto faceBox2 = secondGeom.GetFaceBox(j);
-
-                    if (faceBox.intersects(faceBox2))
-                    {
-                        contact = true;
-                        break;
-                    }
-                }
+                const bool contact = secondBVH.IntersectsBox(faceBox);
 
                 if (!contact)
                 {
