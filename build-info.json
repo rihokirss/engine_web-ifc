@@ -1,99 +1,36 @@
 {
-  "sourceCommit": "4476ec6b7a4afd390cce6e50ef3603409a24cdfc",
-  "version": "0.0.78+structura.4",
-  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.23 (7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed)",
+  "sourceCommit": "40fad2828bb57be49198f51cb1c7a197f47d852c",
+  "upstreamCommit": "40fad2828bb57be49198f51cb1c7a197f47d852c",
+  "sourceBranch": "main",
+  "version": "0.0.78+structura.5",
+  "source": "unmodified upstream",
+  "artifactRun": "https://github.com/ThatOpen/engine_web-ifc/actions/runs/35278624698",
+  "artifactName": "build",
+  "compiler": "Emscripten 4.0.23 (upstream CI)",
+  "buildCommand": "npm ci && npm run build-release",
+  "forkCommits": [],
+  "apiBuildDefines": {},
+  "threading": "upstream automatic selection and fallback",
   "dependencyRevisions": {
-    "fastfloat": "2b2395f9ac836ffca6404424bcc252bff7aa80e4",
+    "fastfloat": "05087a303dad9c98768b33c829d398223a649bc6",
     "tinynurbs": "47115cd9b6e922b27bbc4ab01fdeac2e9ea597a4",
     "tinycpptest": "12e42c8ac6e032ce450fb3f772ebdfd1ddc6008c",
-    "glm": "0af55ccecd98d4e5a8d1fad7de25ba429d60e863",
+    "glm": "8d1fd52e5ab5590e2c81768ace50c72bae28f2ed",
     "earcut": "4811a2b69b91f6127a75e780de6e2113609ddabb",
-    "cdt": "4d0c9026b8ec846fe544897e7111f8f9080d5f8a",
-    "spdlog": "f355b3d58f7067eee1706ff3c801c2361011f3d5",
+    "cdt": "5a1d702a01b24b33555913b90934fe673d51fc0f",
+    "spdlog": "79524ddd08a4ec981b7fea76afd08ee05f83755d",
     "stduuid": "3afe7193facd5d674de709fccc44d5055e144d7a",
     "unordered_dense": "3234af2c03549bc85656bfd3a86993bf1cd8aef1"
   },
-  "threading": "single-thread",
-  "wasmCompileFlags": [
-    "-O3",
-    "-fwasm-exceptions",
-    "-msimd128",
-    "-flto"
-  ],
-  "cmakeOptions": {
-    "WEB_IFC_WASM_NATIVE_EXCEPTIONS": "ON"
-  },
-  "apiBuildDefines": {
-    "self.crossOriginIsolated": "false"
-  },
   "sha256": {
-    "web-ifc-api-iife.js": "b95030fec59de61418c8431533aa3ea842ab632c5ff41890b39e3da5dd5b9fda",
-    "web-ifc-api-node.js": "ca87f361bba68e034dda11a2a331cb8099d8d463d808c34fdc1aafc9050216b4",
-    "web-ifc-api.js": "75407eff3d540836469750fec167d7319200897a89a34065bdbae1dc4ec78e52",
-    "web-ifc-mt.js": "f539fa05be4e24f073000f17a964209ad03d4c7fef0b92190012c34662c98aec",
-    "web-ifc-mt.wasm": "fb3ce09d7c7d2c122f14470663041b46cb30875d407a7b64310df281cc79ce7a",
-    "web-ifc-node.js": "bb36f8dd5d51a612d369fffb77376ecf028446348ecc6723e3cda8b23864c6dc",
-    "web-ifc-node.wasm": "0b2711476b4d4478eaea8171c38ddfe05192bd3fc7bfc842af0edb781a69f223",
+    "web-ifc-api-iife.js": "e0cc92a4db4ba8e1ce852ae8b24fb65a0055fdeb6f6192c635aa9a1ffba6ef7e",
+    "web-ifc-api-node.js": "0e1648538c08c4dc62c796da2ef88940667c42e53050efe6cf7707d1f692b2d2",
+    "web-ifc-api.js": "81339aef50dccef7b9d48373d5f5e12875a2e181290b093810f2b75292fd6639",
+    "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
+    "web-ifc-mt.wasm": "e7052bf9286522b8c038b0a6ce690391a134c5d2759d7b8a9d6cc8c067bc2c99",
+    "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
+    "web-ifc-node.wasm": "0672eb7fd0f168eca9a57d8f04e566eb597e10d5e2d92093c1e28300b1939db2",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "7abe55a737c27e1559ec379f305584f48ab52e8762c409969afcd1ce118b2cae"
-  },
-  "buildCommand": "cmake --build src/cpp/build_wasm -j2 && npm run copy-to-dist && npm run build-api",
-  "apiBuildCommands": [
-    "npm run build-web-ifc-api-node -- --define:self.crossOriginIsolated=false",
-    "npm run build-web-ifc-api-browser -- --define:self.crossOriginIsolated=false",
-    "npm run build-web-ifc-api-iife -- --define:self.crossOriginIsolated=false"
-  ],
-  "typescript": "6.0.3",
-  "esbuild": "0.28.2",
-  "sourceBranch": "codex/source-structura",
-  "upstreamCommit": "3e5bc8c6ee82fee8903f8393a91b2a4027f54377",
-  "forkCommits": [
-    {
-      "sha": "aeacf385716eef8af8834014e3a46686a650bf4a",
-      "subject": "fix: bound malformed tokens, indices and placement recursion"
-    },
-    {
-      "sha": "c0d855fcd6270c233a4898dd19758410d25cd6e1",
-      "subject": "fix: reject partial models after tokenizer failures"
-    },
-    {
-      "sha": "fcd79b0da8f261417f73fbe6f06774c097acaca0",
-      "subject": "perf: enable WASM SIMD and LTO compilation with optional native exceptions"
-    },
-    {
-      "sha": "4c78a03111d6defd35613ebdc4487825c0be9f54",
-      "subject": "build: pin C++ dependencies to the validated fork revisions"
-    },
-    {
-      "sha": "fa58243403682d0dbfd6f1f34458b55c25e6750f",
-      "subject": "perf: index repeated inverse-property queries"
-    },
-    {
-      "sha": "8382c4e77c174d976801c30a768dbdb08bda390d",
-      "subject": "perf: reuse bounded mapped representations while streaming"
-    },
-    {
-      "sha": "38aa94be90df1cef8383ce535be88addd942c933",
-      "subject": "perf: use existing BVHs for boolean face contact queries"
-    },
-    {
-      "sha": "1f34dd45e08cd7d33422d6aeba8c3550003ba6ef",
-      "subject": "perf: narrow plane lookup candidates for faceted geometry"
-    },
-    {
-      "sha": "d4fca7d4b96991d73a3af2785113cb8586941dad",
-      "subject": "perf: skip disjoint boolean cutters after plane preparation"
-    },
-    {
-      "sha": "0ae96ea128fe8277ee92f367812bf70fa7259d54",
-      "subject": "perf: intersect bounded solid pairs without repeated subtraction"
-    },
-    {
-      "sha": "4476ec6b7a4afd390cce6e50ef3603409a24cdfc",
-      "subject": "build: separate Node performance checks from Jest discovery"
-    }
-  ],
-  "openPullRequests": [
-    2151
-  ]
+    "web-ifc.wasm": "cebc1ebc752c57a5ddcad10e75b7f87be17ea606cdc013d32b50ac22be68c421"
+  }
 }

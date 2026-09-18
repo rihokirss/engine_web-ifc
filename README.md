@@ -1,9 +1,7 @@
-# web-ifc for Structura
+# Upstream web-ifc packaged for Structura
 
-Prebuilt from source `4476ec6b7a4afd390cce6e50ef3603409a24cdfc` on `codex/source-structura`, based on upstream `3e5bc8c6ee82fee8903f8393a91b2a4027f54377`.
+Unmodified engine from upstream commit `40fad2828bb57be49198f51cb1c7a197f47d852c`, built by the successful official CI run [35278624698](https://github.com/ThatOpen/engine_web-ifc/actions/runs/35278624698). All JavaScript, declarations and WASM files are copied byte-for-byte from that build artifact. No custom performance patches or bundler defines are applied.
 
-Already merged fixes come directly from upstream. The remaining fork commits retain malformed-input handling (#2151), six performance optimizations, optimized WASM compilation and pinned C++ dependencies. Exact revisions are recorded in build-info.json.
+Only npm packaging metadata, this README and build provenance differ. Version `0.0.78+structura.5` identifies this package; the engine still reports 0.0.78. Install hooks and devDependencies are omitted so installation requires no compiler.
 
-Built with Emscripten 4.0.23, native WASM exceptions, SIMD and LTO. Node/browser bundles use the single-thread runtime, including on isolated pages. Native WebAssembly exception and SIMD support are required. The MT asset remains included for export compatibility.
-
-No install hooks or C++ toolchain are required. Pin the exact release commit. Re-import IFC files to regenerate existing saved fragments.
+WASM build optimizations and mapped-representation caching already merged upstream remain included. Remaining fork performance changes are preserved separately on codex/performance and are not used by this package. Pin the exact release SHA and re-import IFC models to regenerate saved fragments.
