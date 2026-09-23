@@ -462,21 +462,24 @@ export declare class IfcAPI {
      * @param modelID Model handle retrieved by OpenModel
      * @param expressIDs expressIDs of elements to stream
      * @param meshCallback callback function that is called for each mesh
+     * @param applyLinearScalingFactor Whether to apply the model's linear scaling factor to the geometry (default: true)
      */
-    StreamMeshes(modelID: number, expressIDs: Array<number>, meshCallback: (mesh: FlatMesh, index: number, total: number) => void): void;
+    StreamMeshes(modelID: number, expressIDs: Array<number>, meshCallback: (mesh: FlatMesh, index: number, total: number) => void, applyLinearScalingFactor?: boolean): void;
     /**
      * Streams all meshes of a model
      * @param modelID Model handle retrieved by OpenModel
      * @param meshCallback callback function that is called for each mesh
+     * @param applyLinearScalingFactor Whether to apply the model's linear scaling factor to the geometry (default: true)
      */
-    StreamAllMeshes(modelID: number, meshCallback: (mesh: FlatMesh, index: number, total: number) => void): void;
+    StreamAllMeshes(modelID: number, meshCallback: (mesh: FlatMesh, index: number, total: number) => void, applyLinearScalingFactor?: boolean): void;
     /**
      * Streams all meshes of a model with a specific ifc type
      * @param modelID Model handle retrieved by OpenModel
      * @param types types of elements to stream
      * @param meshCallback callback function that is called for each mesh
+     * @param applyLinearScalingFactor Whether to apply the model's linear scaling factor to the geometry (default: true)
      */
-    StreamAllMeshesWithTypes(modelID: number, types: Array<number>, meshCallback: (mesh: FlatMesh, index: number, total: number) => void): void;
+    StreamAllMeshesWithTypes(modelID: number, types: Array<number>, meshCallback: (mesh: FlatMesh, index: number, total: number) => void, applyLinearScalingFactor?: boolean): void;
     /**
      * Checks if a specific model ID is open or closed
      * @param modelID Model handle retrieved by OpenModel
@@ -486,16 +489,18 @@ export declare class IfcAPI {
     /**
      * Load all geometry in a model
      * @param modelID Model handle retrieved by OpenModel
+     * @param applyLinearScalingFactor Whether to apply the model's linear scaling factor to the geometry (default: true)
      * @returns Vector of FlatMesh objects
      */
-    LoadAllGeometry(modelID: number): Vector<FlatMesh>;
+    LoadAllGeometry(modelID: number, applyLinearScalingFactor?: boolean): Vector<FlatMesh>;
     /**
      * Load geometry for a single element
      * @param modelID Model handle retrieved by OpenModel
      * @param expressID ExpressID of the element
+     * @param applyLinearScalingFactor Whether to apply the model's linear scaling factor to the geometry (default: true)
      * @returns FlatMesh object
      */
-    GetFlatMesh(modelID: number, expressID: number): FlatMesh;
+    GetFlatMesh(modelID: number, expressID: number, applyLinearScalingFactor?: boolean): FlatMesh;
     /**
      * Returns the maximum ExpressID value in the IFC file, ex.- #9999999
      * @param modelID Model handle retrieved by OpenModel
