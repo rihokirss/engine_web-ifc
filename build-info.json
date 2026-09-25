@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "187b9690d8394849dc7dee32ca2d5991ae23bd38",
-  "upstreamCommit": "187b9690d8394849dc7dee32ca2d5991ae23bd38",
+  "sourceCommit": "98436dd1eae57ecc9f3b1a5f501daca1d4453fc4",
+  "upstreamCommit": "98436dd1eae57ecc9f3b1a5f501daca1d4453fc4",
   "sourceBranch": "main",
-  "version": "0.0.79+structura.1",
+  "version": "0.0.79+structura.2",
   "source": "unmodified upstream",
-  "artifactRun": "https://github.com/ThatOpen/engine_web-ifc/actions/runs/35845485226",
+  "artifactRun": "https://github.com/ThatOpen/engine_web-ifc/actions/runs/35906684015",
   "artifactName": "build",
   "compiler": "Emscripten 4.0.23 (upstream CI)",
   "buildCommand": "npm ci && npm run build-release",
@@ -27,10 +27,10 @@
     "web-ifc-api-node.js": "592491e48f22ba5dd2f1d33a6485469bed63ac1b5f48547a80b146536556ff6f",
     "web-ifc-api.js": "1edb1dd8e8dba63757932f62001f1b2ee812d86594b6ffc5e1e8beebe1f16690",
     "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
-    "web-ifc-mt.wasm": "46652f8ca61ddf1eefe8b66ee7c635ccc8a1d181a893e21df3b98fd2e6e19d15",
+    "web-ifc-mt.wasm": "8f8116a3586794a68a13e1290135b2d00add5420735f81f73d97264c3d535c23",
     "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
-    "web-ifc-node.wasm": "2ca979f06a3177cd1cdfcfdd7fa7d1fd095c75c71905998d36d57e813cb2116d",
+    "web-ifc-node.wasm": "fc29d5e205e333bb554018e921dc82fe3b6ff94960deb21c89ee31b0834ca501",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "dbc6857e9c19d1d6733f915690e2bcc67771e1051004e7733d6723c72f592053"
+    "web-ifc.wasm": "2802f4575cbfe08632035cd6a80cf48393f69658695381c1d35d882e9ce76b89"
   }
 }
