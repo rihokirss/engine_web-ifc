@@ -1,24 +1,14 @@
 {
-  "sourceCommit": "3d5ff6440041e38e41e1ba50a4a4ce9ea2704b02",
-  "upstreamCommit": "98436dd1eae57ecc9f3b1a5f501daca1d4453fc4",
+  "sourceCommit": "768dac6a4b6751462cd76d988eaf32c35a17c151",
+  "upstreamCommit": "cbc1b92f71b37005426f4919276f17e5c4d8f667",
   "sourceBranch": "codex/structura-fixes",
   "version": "0.0.79+structura.3",
-  "source": "upstream main plus open fork pull requests",
-  "pullRequests": [
-    "https://github.com/ThatOpen/engine_web-ifc/pull/2220",
-    "https://github.com/ThatOpen/engine_web-ifc/pull/2221"
-  ],
+  "source": "upstream main plus fork fixes not yet merged upstream",
+  "pullRequests": [],
   "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.23 (7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed) (local build, same version as upstream CI)",
   "buildCommand": "emcmake cmake -DCMAKE_BUILD_TYPE=Release && make web-ifc web-ifc-node web-ifc-mt && npm run build-api",
   "forkCommits": [
-    "c41269c3958ebb19189410d8a8918bc0b647dec9 fix(boolean): keep a face with vertex rounding noise on a single plane",
-    "ff101f5f7ac5299a53787b9d719f337ba51ee5d2 fix(boolean): treat a point on a triangle edge as lying on the surface",
-    "2d1e0a870bc686024e3409c42679fa9a82fcb43a fix(boolean): map CDT triangle vertices back correctly",
-    "3bdf773a6cff9a568c89500b1d3cef4cffefdc0d fix(boolean): do not drop a whole plane on crossing constraint edges",
-    "10951c14bb41a36629b5d51d435ca6f33a3c68a6 fix(boolean): do not triangulate the contact area of touching faces twice",
-    "ddc641f73c664489e08862ab0e445427fa36219b test(boolean): add synthetic CSG robustness fixtures",
-    "1403081ec5dc4ed63fb4967c103669249712db55 fix: trim swept disks along composite curves by StartParam/EndParam",
-    "3d5ff6440041e38e41e1ba50a4a4ce9ea2704b02 fix: keep swept disks whose polyline EndParam carries rounding noise"
+    "768dac6a4b6751462cd76d988eaf32c35a17c151 fix: keep the first edge when trimming indexed polycurves by length"
   ],
   "apiBuildDefines": {},
   "threading": "upstream automatic selection and fallback",
@@ -38,10 +28,10 @@
     "web-ifc-api-node.js": "592491e48f22ba5dd2f1d33a6485469bed63ac1b5f48547a80b146536556ff6f",
     "web-ifc-api.js": "1edb1dd8e8dba63757932f62001f1b2ee812d86594b6ffc5e1e8beebe1f16690",
     "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
-    "web-ifc-mt.wasm": "f87e4ba015a345899c12402e258f4035c24dbd96b1dce514c0e98a3019ebc66d",
+    "web-ifc-mt.wasm": "5c6a580d7e36bf1a84d33dd0a065a48f849ca6a53b5ca3e3b96411b73dd41b30",
     "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
-    "web-ifc-node.wasm": "1f0ee9f9dead8b731e9ec8149ec870a67248b8a2c0ae7a3c83a8f4d163cce09a",
+    "web-ifc-node.wasm": "39b910eb52b82d21d3e15a35f15900216d9cdfb0bb024c7cce56777781b03ae0",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "7af2f846c23e566cf2e610514909093b6bbaa6b3b6ca782ef501d79bf8bc39c9"
+    "web-ifc.wasm": "5fac4426bc98e6bbec1f0e69843d0954c7cbf813721f6da4625c9bbfa406622f"
   }
 }

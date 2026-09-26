@@ -35,5 +35,5 @@
     "fs": false
   },
   "types": "./web-ifc-api.d.ts",
-  "structuraSourceCommit": "3d5ff6440041e38e41e1ba50a4a4ce9ea2704b02"
+  "structuraSourceCommit": "768dac6a4b6751462cd76d988eaf32c35a17c151"
 }
