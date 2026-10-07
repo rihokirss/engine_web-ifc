@@ -1,15 +1,14 @@
 {
-  "sourceCommit": "768dac6a4b6751462cd76d988eaf32c35a17c151",
-  "upstreamCommit": "cbc1b92f71b37005426f4919276f17e5c4d8f667",
-  "sourceBranch": "codex/structura-fixes",
-  "version": "0.0.79+structura.3",
-  "source": "upstream main plus fork fixes not yet merged upstream",
-  "pullRequests": [],
-  "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.23 (7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed) (local build, same version as upstream CI)",
-  "buildCommand": "emcmake cmake -DCMAKE_BUILD_TYPE=Release && make web-ifc web-ifc-node web-ifc-mt && npm run build-api",
-  "forkCommits": [
-    "768dac6a4b6751462cd76d988eaf32c35a17c151 fix: keep the first edge when trimming indexed polycurves by length"
-  ],
+  "sourceCommit": "36a921c8ce6e5d6595067b8cdaa4ceed7a436e7d",
+  "upstreamCommit": "36a921c8ce6e5d6595067b8cdaa4ceed7a436e7d",
+  "sourceBranch": "main",
+  "version": "0.0.79+structura.4",
+  "source": "unmodified upstream",
+  "artifactRun": "https://github.com/ThatOpen/engine_web-ifc/actions/runs/37626980385",
+  "artifactName": "build",
+  "compiler": "Emscripten 4.0.23 (upstream CI)",
+  "buildCommand": "npm ci && npm run build-release",
+  "forkCommits": [],
   "apiBuildDefines": {},
   "threading": "upstream automatic selection and fallback",
   "dependencyRevisions": {
@@ -28,10 +27,10 @@
     "web-ifc-api-node.js": "592491e48f22ba5dd2f1d33a6485469bed63ac1b5f48547a80b146536556ff6f",
     "web-ifc-api.js": "1edb1dd8e8dba63757932f62001f1b2ee812d86594b6ffc5e1e8beebe1f16690",
     "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
-    "web-ifc-mt.wasm": "5c6a580d7e36bf1a84d33dd0a065a48f849ca6a53b5ca3e3b96411b73dd41b30",
+    "web-ifc-mt.wasm": "f10d537d07edceec60ef1c5751a1fbd387ad6b3645331e97edcada56017e23fe",
     "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
-    "web-ifc-node.wasm": "39b910eb52b82d21d3e15a35f15900216d9cdfb0bb024c7cce56777781b03ae0",
+    "web-ifc-node.wasm": "0e6371a4de0248f29e1e614af0129858905f561834b7ee88f47e4c07a39638a4",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "5fac4426bc98e6bbec1f0e69843d0954c7cbf813721f6da4625c9bbfa406622f"
+    "web-ifc.wasm": "8cbaf95b7d21ee2fd09ccb3f262779f4a433bbc70aa191fc94356c8552fed250"
   }
 }
