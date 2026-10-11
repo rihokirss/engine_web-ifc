@@ -1,5 +1,7 @@
 # Upstream web-ifc packaged for Structura
 
-Unmodified upstream `36a921c8ce6e5d6595067b8cdaa4ceed7a436e7d` from [official CI run 37626980385](https://github.com/ThatOpen/engine_web-ifc/actions/runs/37626980385). JavaScript, declarations and WASM files match the artifact byte-for-byte. Only packaging metadata, README and provenance differ.
+Unmodified upstream `fd99f39784d2e7e92dde4de9903dafd4ba8544c2` from [official CI run 38133122300](https://github.com/ThatOpen/engine_web-ifc/actions/runs/38133122300). JavaScript, declarations and WASM match the build artifact byte-for-byte. Only packaging metadata, README and provenance differ.
 
-Version `0.0.79+structura.4` identifies this package; the engine reports 0.0.79. Install hooks and development dependencies are omitted. All Structura correctness fixes, including PR #2223, are now upstream. Separate performance experiments are not included. Pin the exact release SHA and re-import IFC models to regenerate saved fragments.
+Version `0.0.79+structura.5` identifies this package; the engine reports 0.0.79. Install hooks and development dependencies are omitted. Includes upstream PRs #2249 and #2250 (IFC4X3 surface-curve parameters and fixed-reference sweep orientation), #2254 (standalone IFC4X3 curve placements), and fast_float 8.3.2.
+
+Pin the exact release SHA. Re-import existing IFC models to regenerate saved fragment geometry. Separate performance experiments are not included.
