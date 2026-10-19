@@ -1,14 +1,14 @@
 {
-  "sourceCommit": "fd99f39784d2e7e92dde4de9903dafd4ba8544c2",
-  "upstreamCommit": "fd99f39784d2e7e92dde4de9903dafd4ba8544c2",
-  "sourceBranch": "main",
-  "version": "0.0.79+structura.5",
-  "source": "unmodified upstream",
-  "artifactRun": "https://github.com/ThatOpen/engine_web-ifc/actions/runs/38133122300",
-  "artifactName": "build",
-  "compiler": "Emscripten 4.0.23 (upstream CI)",
+  "sourceCommit": "002f02e192c0859e1827e26085cafb0dec7edbf4",
+  "upstreamCommit": "dd44aa77e770d2584b6d4095dec0d89f4a4cf6d0",
+  "sourceBranch": "codex/pr-snap-flush-cutter-faces",
+  "version": "0.0.79+structura.6",
+  "source": "upstream main plus one fix commit (cutter face snapping before boolean differences)",
+  "compiler": "Emscripten 4.0.23 (local build, same version as upstream CI)",
   "buildCommand": "npm ci && npm run build-release",
-  "forkCommits": [],
+  "forkCommits": [
+    "002f02e192c0859e1827e26085cafb0dec7edbf4"
+  ],
   "apiBuildDefines": {},
   "threading": "upstream automatic selection and fallback",
   "dependencyRevisions": {
@@ -27,10 +27,10 @@
     "web-ifc-api-node.js": "592491e48f22ba5dd2f1d33a6485469bed63ac1b5f48547a80b146536556ff6f",
     "web-ifc-api.js": "1edb1dd8e8dba63757932f62001f1b2ee812d86594b6ffc5e1e8beebe1f16690",
     "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
-    "web-ifc-mt.wasm": "e0a30c22d212101260c906e1570387a8689d626c9c27d745132d34e4a8e2a8a1",
+    "web-ifc-mt.wasm": "183749cfbddcc7e4e0367a4d7879232027dc5ae1480065395ec4575af5aafc95",
     "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
-    "web-ifc-node.wasm": "8e5ecf219e1e4c288e630c3315ea822707e9cead38ebb179c7275c167b60548f",
+    "web-ifc-node.wasm": "6d311c850f783621ad974252cf9fdd84b6584777d86bc6bc869b5c1b922c0287",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "8974bc40caf237d3821bc0667ca4cf29ff42012cf7e5fc6e9f1ef1d954065b03"
+    "web-ifc.wasm": "bed876d44ba0da4e43e952893b0c813f804d7ed95032bd3483a745be66f497b5"
   }
 }
