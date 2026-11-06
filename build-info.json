@@ -1,11 +1,10 @@
 {
-  "sourceCommit": "d3c8cdddc6c6aa413d4616fe466213cde690635b",
-  "sourceTree": "d52ed32e0a8f1b9cb8c61ea1524c122c347379de",
+  "sourceCommit": "8c01622e5d7a64bbc00345a87e95f5481e56d725",
+  "sourceTree": "4d309aa404cf2eaf47ab26a07991004669581123",
   "upstreamCommit": "bbb34120e2dd2659836d849f84cf97d5f47e6587",
-  "sourceBranch": "codex/fix-deep-faceted-difference",
-  "version": "0.0.79+structura.7",
-  "source": "rebased upstream main plus PR #2368 (deep faceted difference chains)",
-  "pullRequest": "https://github.com/ThatOpen/engine_web-ifc/pull/2368",
+  "sourceBranch": "codex/fix-solid-classification",
+  "version": "0.0.79+structura.8",
+  "source": "PR #2368 plus topology-preserving solid booleans and touching-contour triangulation",
   "compiler": "Emscripten 4.0.23",
   "buildType": "Release",
   "buildCommands": [
@@ -17,7 +16,8 @@
   ],
   "forkCommits": [
     "57ccb867bf6794980cebddebb4af50e38c70dd83",
-    "d3c8cdddc6c6aa413d4616fe466213cde690635b"
+    "d3c8cdddc6c6aa413d4616fe466213cde690635b",
+    "8c01622e5d7a64bbc00345a87e95f5481e56d725"
   ],
   "apiBuildDefines": {},
   "threading": "upstream automatic selection and fallback",
@@ -30,35 +30,73 @@
     "cdt": "b4413ee44affb489099ed4d6ec65e94788cb6708",
     "spdlog": "79524ddd08a4ec981b7fea76afd08ee05f83755d",
     "stduuid": "3afe7193facd5d674de709fccc44d5055e144d7a",
-    "unordered_dense": "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5"
+    "unordered_dense": "7c58a8b7a48e790fe72f6508eb3b46317cbba9d5",
+    "manifold": "ce50d78021d64507f89e8c9fc2c2e51018117857"
   },
   "validation": {
-    "jestTests": 341,
-    "nativeCppTests": 29,
+    "jestTests": 344,
+    "nativeCppTests": 39,
     "modelRegressions": 30,
-    "applicationConversion": {
-      "inputBytes": 179709633,
-      "outputBytes": 16080466,
-      "milliseconds": 51291
-    }
+    "browserPublicApi": "single-threaded smoke passed",
+    "threadedKernel": "shared-memory smoke passed with explicit classic worker loader and heap views",
+    "nativeInstalledConsumer": "passed",
+    "syntheticNegativeControls": "unpatched kernel and original face triangulator fail the new regressions",
+    "architecturalModel": {
+      "products": 54489,
+      "placements": 198726,
+      "uniqueGeometries": 81418,
+      "newEmptyGeometries": 0,
+      "nonFiniteVertices": 0,
+      "invalidIndices": 0,
+      "improvedClosureGeometries": 104,
+      "newClosureRegressions": 0,
+      "ifcOpenShellVersion": "0.8.5",
+      "comparedChangedProducts": 966,
+      "sourceVerifiedReferenceOmissions": 1,
+      "unresolvedMaterialRegressions": 0
+    },
+    "mechanicalModels": {
+      "models": 2,
+      "geometryHashesUnchanged": true
+    },
+    "applicationConversions": [
+      {
+        "inputBytes": 179709633,
+        "outputBytes": 15843892,
+        "milliseconds": 24934.042083
+      },
+      {
+        "inputBytes": 643643090,
+        "outputBytes": 45344352,
+        "milliseconds": 53433.979929
+      }
+    ]
   },
   "knownLimitations": [
-    "The real-world stress fixture has a residual mesh closure error, documented in PR #2368."
+    "Existing automatic multithreaded browser initialization may fall back to the single-threaded runtime; the public single-threaded API and the threaded kernel were validated separately.",
+    "Float32 output can contain collapsed microscopic triangles; closure and reference checks do not claim universal strict two-manifold output."
   ],
   "sha256": {
+    "LICENSE.md": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+    "LICENSE.manifold.txt": "848f0363550ea77c96da07e51548848aebb6cae1ff90939dbe09a79ede43af0b",
+    "README.md": "46335757949e65a4727f2da0b4c341c1ac3955db1d7824492bb4015ef879c10c",
+    "ifc-schema.d.ts": "c95cd1e2ed838494ae2b12071e8e89f96c73a97a39675311b21e419ffea8b698",
+    "web-ifc-api-node.d.ts": "64b90f7e17e31c8e906154ffb8d4ad95726b2a8289ddbfbb093a504226266521",
+    "web-ifc-api.d.ts": "64b90f7e17e31c8e906154ffb8d4ad95726b2a8289ddbfbb093a504226266521",
     "helpers/log.d.ts": "ebce8fe80811fd1088ff016eab8b5dadde985499edd8635c034e27f8d624da91",
     "helpers/properties.d.ts": "4b88e4274b8e3f0780b16e06e746caa3a80d88599a0b3438bdfb0dd6f7f1817c",
-    "ifc-schema.d.ts": "c95cd1e2ed838494ae2b12071e8e89f96c73a97a39675311b21e419ffea8b698",
     "web-ifc-api-iife.js": "ef919be55de441f98298596ea79ed2b9111034f04374917ef48f1a6dbefae6f7",
-    "web-ifc-api-node.d.ts": "64b90f7e17e31c8e906154ffb8d4ad95726b2a8289ddbfbb093a504226266521",
     "web-ifc-api-node.js": "dfe67a744e1b214d5b6d6e900ce79f0997b03b2b6f5e741f4b7c0e1df082830e",
-    "web-ifc-api.d.ts": "64b90f7e17e31c8e906154ffb8d4ad95726b2a8289ddbfbb093a504226266521",
     "web-ifc-api.js": "eb4b2c0752d4588a66bafdd3fa14d95ac442756137b5e2e1e3b5f5eb9cef5059",
     "web-ifc-mt.js": "5ac00ad538de984eecd998d44a61897357abef17062c28df0f5056c33fee3814",
-    "web-ifc-mt.wasm": "662f9dd1a031a5ae29c610b7723260ad9cf30a9a5d8a100f6e48fa4261f5bb1a",
+    "web-ifc-mt.wasm": "a09e5a13dca1a63885bbb0782d9c28a1ae0aee840763eeb3467ed5258ad8c59c",
     "web-ifc-node.js": "e33e19ccdf849f8af0d1055de510a1704e96de033c4d0df1a38be3d29507344e",
-    "web-ifc-node.wasm": "ad544a9579900aa05038295004a3788e46c39cc4c6cc6b327455dc8256ae21ff",
+    "web-ifc-node.wasm": "fd949e0a9e156d6eec19e718d3fcc82e176c1047d3af95b4613bdd5f6a5d4d5d",
     "web-ifc.js": "76027d8872f2ffcc488c181a146152c52cc7afe07bcc394d29f128a7013c254c",
-    "web-ifc.wasm": "8b7499cd2d9ffbbf013bdb5b61544b193665b0be0eae8bd66163f9a7493cfaff"
+    "web-ifc.wasm": "cc3cda772ec4b85ae130ce25671621e781099cf34b8ab15a347e8430d8eb9fd3"
+  },
+  "relatedPullRequest": "https://github.com/ThatOpen/engine_web-ifc/pull/2368",
+  "dependencyPatches": {
+    "manifold-preserve-face-orientation.patch": "c075356bd8b821d5e439cc7051870e133105d69a262ff1f621aa0c5b08c1e7da"
   }
 }
