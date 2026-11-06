@@ -1,9 +1,20 @@
-# Upstream web-ifc packaged for Structura
+# web-ifc packaged for Structura
 
-Upstream `main` `dd44aa77e770d2584b6d4095dec0d89f4a4cf6d0` plus one fix commit, `002f02e192c0859e1827e26085cafb0dec7edbf4` on `codex/pr-snap-flush-cutter-faces`. The fix snaps cutter faces that lie a fraction of a millimetre off a parallel operand face onto that face before boolean differences (openings misaligned by 0.02–0.14 mm, issue #2269).
+Version `0.0.79+structura.7` packages upstream `bbb34120` plus
+[PR #2368](https://github.com/ThatOpen/engine_web-ifc/pull/2368), source commit
+`d3c8cdddc6c6aa413d4616fe466213cde690635b`. Deep faceted difference chains keep their original
+subtraction order in one normalization frame. Repeated triangulation retains
+constraint vertices, and touching inner face bounds retain their containing face.
+The previous cutter-face snapping fix is included in upstream.
 
-Built locally with Emscripten 4.0.23, the version upstream CI uses. JavaScript and declarations are byte-for-byte identical to the 0.0.79+structura.5 package, which was the official CI artifact of upstream `fd99f397`; only the three WASM binaries differ. Hashes and provenance are in `build-info.json`.
+Node, browser and multithreaded browser runtimes were built together with
+Emscripten 4.0.23. Matched JavaScript, declarations and WASM are included;
+install hooks and development dependencies are omitted. Provenance, dependency
+revisions, validation and SHA-256 hashes are in `build-info.json`.
 
-Version `0.0.79+structura.6` identifies this package; the engine reports 0.0.79. Install hooks and development dependencies are omitted.
+All 341 Jest tests, 29 native tests and 30 model regression checks pass.
+The original 179.7 MB application model converts to Fragments in 51.3 seconds.
+The stress mesh still has a residual closure error documented in the draft PR.
 
-Pin the exact release SHA. Re-import existing IFC models to regenerate saved fragment geometry. Separate performance experiments are not included.
+Pin the exact release commit. Existing stored Fragments geometry requires
+IFC re-import to regenerate it. The engine reports version 0.0.79.

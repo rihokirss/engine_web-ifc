@@ -73175,19 +73175,23 @@ var IfcAPI2 = class {
     for (const typeId of entities) {
       if (!this.IsIfcElement(typeId)) continue;
       const lines = this.GetLineIDsWithType(modelID, typeId);
-      const size = lines.size();
-      for (let y = 0; y < size; y++) {
-        const expressID = lines.get(y);
-        const info = this.GetLine(modelID, expressID);
-        try {
-          if ("GlobalId" in info) {
-            const globalID = info.GlobalId.value;
-            map.set(expressID, globalID);
-            map.set(globalID, expressID);
+      try {
+        const size = lines.size();
+        for (let y = 0; y < size; y++) {
+          const expressID = lines.get(y);
+          const info = this.GetLine(modelID, expressID);
+          try {
+            if ("GlobalId" in info) {
+              const globalID = info.GlobalId.value;
+              map.set(expressID, globalID);
+              map.set(globalID, expressID);
+            }
+          } catch (e) {
+            continue;
           }
-        } catch (e) {
-          continue;
         }
+      } finally {
+        lines.delete();
       }
     }
     this.ifcGuidMap.set(modelID, map);
