@@ -186,7 +186,6 @@ namespace
             for (auto [along, id] : points) subdivisions[edge].push_back(id);
         }
         manifold::MeshGL64 mesh;
-        mesh.tolerance = precision;
         for (auto tri : triangles)
         {
             std::vector<Index> polygon;
@@ -429,8 +428,16 @@ namespace
                 // Regularize the result at the model's geometric precision. This
                 // preserves manifold topology and uses a distance tolerance, without
                 // rejecting faces according to their aspect ratio or tessellation density.
-                solid = solid.AsOriginal().Simplify(tolerance);
-                return solid.Status() == manifold::Manifold::Error::NoError;
+                // Simplification may only move the boundary within the precision. If it
+                // changes the volume by more than that, keep the exact Boolean result.
+                const auto simplified = solid.AsOriginal().Simplify(tolerance);
+                if (simplified.Status() == manifold::Manifold::Error::NoError)
+                {
+                    const double allowed = std::max(tolerance, solid.GetEpsilon())*(solid.SurfaceArea()+simplified.SurfaceArea());
+                    if (std::abs(simplified.Volume()-solid.Volume()) <= allowed) solid = simplified;
+                    else spdlog::debug("[Manifold] Simplification changed the volume; keeping the unsimplified result");
+                }
+                return true;
             };
             manifold::Manifold solid;
             if (!apply(operands, solid)) return false;

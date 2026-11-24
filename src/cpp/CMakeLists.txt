@@ -78,9 +78,8 @@ set(MANIFOLD_TEST OFF CACHE BOOL "" FORCE)
 set(MANIFOLD_JSBIND OFF CACHE BOOL "" FORCE)
 set(MANIFOLD_PYBIND OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(manifold GIT_REPOSITORY "https://github.com/elalish/manifold"
-	GIT_TAG "ce50d78021d64507f89e8c9fc2c2e51018117857") # v3.5.4
+	GIT_TAG "2cac6b03bddb6d08ae4eae9fc5cc847080084c1e") # master 2026-11-24, replace with the v4.0 tag
 FetchContent_MakeAvailable(manifold)
-include(cmake/apply-manifold-patch.cmake)
 if(EMSCRIPTEN)
 	target_compile_options(manifold PRIVATE ${WEB_IFC_WASM_EXCEPTION_FLAG} -msimd128 -flto)
 	# Atomics in the threaded WASM build require a separately compiled library.

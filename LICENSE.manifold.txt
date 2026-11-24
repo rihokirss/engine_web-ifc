@@ -1,4 +1,4 @@
-Manifold 3.5.4
+Manifold (master 2cac6b03, to be replaced by the v4.0 release)
 https://github.com/elalish/manifold
 Copyright The Manifold Authors.
 
