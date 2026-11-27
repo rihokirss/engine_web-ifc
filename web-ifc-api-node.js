@@ -24,6 +24,4265 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// dist/geokernel/geokernel.js
+var require_geokernel = __commonJS({
+  "dist/geokernel/geokernel.js"(exports2, module2) {
+    "use strict";
+    (function(root) {
+      var m = { exports: {} };
+      (function(module3, exports3, host) {
+        (function(def) {
+          def("2d/triangulate/assertSimple", ["2d/triangulate/basics"], function(K) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            function assertSimple(V, rings) {
+              const E = [];
+              for (const r of rings) for (let i = 0; i < r.length; i++) E.push([V[r[i]], V[r[(i + 1) % r.length]]]);
+              for (let i = 0; i < E.length; i++) for (let j = i + 1; j < E.length; j++) if (segsCross(E[i][0], E[i][1], E[j][0], E[j][1])) throw new Error("poly-tri: the polygon is self-intersecting (or a hole touches / crosses the outline)");
+            }
+            return { assertSimple };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/basics", [], function() {
+            const EPS = 1e-12;
+            function area(P) {
+              let a = 0;
+              for (let i = 0, j = P.length - 1; i < P.length; j = i++) a += P[j][0] * P[i][1] - P[i][0] * P[j][1];
+              return a / 2;
+            }
+            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+            const same = (a, b) => Math.abs(a[0] - b[0]) <= 1e-12 && Math.abs(a[1] - b[1]) <= 1e-12;
+            const ringArea = (V, r) => area(r.map((k) => V[k]));
+            const inTri = (p, a, b, c) => cross(a, b, p) >= -EPS && cross(b, c, p) >= -EPS && cross(c, a, p) >= -EPS;
+            const pipXY = (q, P) => {
+              let c = false;
+              for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+                const a = P[i], b = P[j];
+                if (a[1] > q[1] !== b[1] > q[1] && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+              }
+              return c;
+            };
+            function segsCross(a, b, c, d) {
+              const o1 = cross(a, b, c), o2 = cross(a, b, d), o3 = cross(c, d, a), o4 = cross(c, d, b);
+              if ((o1 > EPS && o2 < -EPS || o1 < -EPS && o2 > EPS) && (o3 > EPS && o4 < -EPS || o3 < -EPS && o4 > EPS)) return true;
+              const on = (p, q, r) => Math.abs(cross(p, q, r)) <= EPS && Math.min(p[0], q[0]) - EPS <= r[0] && r[0] <= Math.max(p[0], q[0]) + EPS && Math.min(p[1], q[1]) - EPS <= r[1] && r[1] <= Math.max(p[1], q[1]) + EPS;
+              const shared = same(a, c) || same(a, d) || same(b, c) || same(b, d);
+              return !shared && (on(a, b, c) || on(a, b, d) || on(c, d, a) || on(c, d, b));
+            }
+            return { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/bridge", ["2d/triangulate/basics"], function(K) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            function bridgeOk(V, outer, hole, pending, i, M) {
+              const n = outer.length, R = V[outer[i]], A = V[outer[(i + n - 1) % n]], B = V[outer[(i + 1) % n]];
+              if (same(R, M)) return false;
+              const conv = cross(A, R, B) >= 0, l1 = cross(A, R, M) > EPS, l2 = cross(R, B, M) > EPS;
+              if (conv ? !(l1 && l2) : !(l1 || l2)) return false;
+              const hits = (ring) => {
+                for (let k = 0; k < ring.length; k++) {
+                  const a = V[ring[k]], b = V[ring[(k + 1) % ring.length]];
+                  if (same(a, M) || same(b, M) || same(a, R) || same(b, R)) continue;
+                  if (segsCross(M, R, a, b)) return true;
+                }
+                return false;
+              };
+              if (hits(outer) || hits(hole) || pending.some(hits)) return false;
+              const mid = [(M[0] + R[0]) / 2, (M[1] + R[1]) / 2];
+              return pipXY(mid, outer.map((k) => V[k])) && !pending.some((h) => pipXY(mid, h.map((k) => V[k])));
+            }
+            function touchSplice(V, outer, hole) {
+              for (let j = 0; j < hole.length; j++) {
+                const H = V[hole[j]], N = V[hole[(j + 1) % hole.length]], Pv = V[hole[(j + hole.length - 1) % hole.length]];
+                for (let i = 0; i < outer.length; i++) {
+                  if (!same(V[outer[i]], H)) continue;
+                  const A = V[outer[(i + outer.length - 1) % outer.length]], R = V[outer[i]], B = V[outer[(i + 1) % outer.length]];
+                  const inWedge = (Q) => {
+                    const conv = cross(A, R, B) >= 0, l1 = cross(A, R, Q) > EPS, l2 = cross(R, B, Q) > EPS;
+                    return conv ? l1 && l2 : l1 || l2;
+                  };
+                  if (!inWedge(N) || !inWedge(Pv)) continue;
+                  const out = outer.slice(0, i + 1);
+                  for (let k = 1; k <= hole.length; k++) out.push(hole[(j + k) % hole.length]);
+                  for (let k = i + 1; k < outer.length; k++) out.push(outer[k]);
+                  return out;
+                }
+              }
+              return null;
+            }
+            function bridge(V, outer, hole, pending) {
+              const touched = touchSplice(V, outer, hole);
+              if (touched) return touched;
+              pending = pending || [];
+              let mi = 0;
+              for (let i = 1; i < hole.length; i++) {
+                const p = V[hole[i]], q = V[hole[mi]];
+                if (p[0] > q[0] || p[0] === q[0] && p[1] > q[1]) mi = i;
+              }
+              const M = V[hole[mi]];
+              let best = null;
+              for (let i = 0; i < outer.length; i++) {
+                const a = V[outer[i]], b = V[outer[(i + 1) % outer.length]];
+                if ((a[1] - M[1]) * (b[1] - M[1]) > 0 || a[1] === b[1]) continue;
+                const x = a[0] + (M[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]);
+                if (x < M[0] - EPS) continue;
+                if (!best || x < best.x) best = { x, i };
+              }
+              if (!best) throw new Error("poly-tri: a hole is not inside the outline");
+              const ia = outer[best.i], ib = outer[(best.i + 1) % outer.length], I = [best.x, M[1]];
+              let vis = same(V[ia], I) ? best.i : same(V[ib], I) ? (best.i + 1) % outer.length : V[ia][0] > V[ib][0] ? best.i : (best.i + 1) % outer.length;
+              const P = V[outer[vis]];
+              if (!same(P, I)) {
+                let bestAng = Infinity, bestD = Infinity;
+                const t = cross(M, I, P) >= 0 ? [M, I, P] : [M, P, I];
+                for (let i = 0; i < outer.length; i++) {
+                  if (i === vis) continue;
+                  const R = V[outer[i]], prev = V[outer[(i + outer.length - 1) % outer.length]], next = V[outer[(i + 1) % outer.length]];
+                  if (cross(prev, R, next) > EPS) continue;
+                  if (!inTri(R, t[0], t[1], t[2])) continue;
+                  const ang = Math.abs(Math.atan2(R[1] - M[1], R[0] - M[0])), d = Math.hypot(R[0] - M[0], R[1] - M[1]);
+                  if (ang < bestAng - 1e-12 || Math.abs(ang - bestAng) <= 1e-12 && d < bestD) {
+                    bestAng = ang;
+                    bestD = d;
+                    vis = i;
+                  }
+                }
+              }
+              if (!bridgeOk(V, outer, hole, pending, vis, M)) {
+                const order = outer.map((k, i) => [i, Math.hypot(V[k][0] - M[0], V[k][1] - M[1])]).sort((a, b) => a[1] - b[1]);
+                const alt = order.find(([i]) => bridgeOk(V, outer, hole, pending, i, M));
+                if (!alt) throw new Error("poly-tri: no valid bridge for a hole (self-intersecting?)");
+                vis = alt[0];
+              }
+              const out = outer.slice(0, vis + 1);
+              for (let k = 0; k <= hole.length; k++) out.push(hole[(mi + k) % hole.length]);
+              out.push(outer[vis]);
+              for (let i = vis + 1; i < outer.length; i++) out.push(outer[i]);
+              return out;
+            }
+            return { bridge, bridgeOk };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/cleanRing", ["2d/triangulate/basics"], function(K) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            function cleanRing(V, idx, keep) {
+              let r = idx.filter((k, i) => !same(V[k], V[idx[(i + 1) % idx.length]]));
+              for (let changed = true; changed && r.length > 3; ) {
+                changed = false;
+                for (let i = 0; i < r.length && r.length > 3; i++) {
+                  const a = V[r[(i + r.length - 1) % r.length]], b = V[r[i]], c = V[r[(i + 1) % r.length]];
+                  const scale = Math.max(1e-300, Math.hypot(a[0] - b[0], a[1] - b[1]) * Math.hypot(c[0] - b[0], c[1] - b[1]));
+                  if (!(keep && keep(r[i])) && Math.abs(cross(a, b, c)) <= 1e-12 * scale && (b[0] - a[0]) * (c[0] - b[0]) + (b[1] - a[1]) * (c[1] - b[1]) >= 0) {
+                    r.splice(i, 1);
+                    changed = true;
+                    i--;
+                  }
+                }
+              }
+              return r;
+            }
+            return { cleanRing };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/earClip", ["2d/triangulate/basics"], function(K) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            function earClip(V, ring) {
+              const r = ring.slice(), tris = [];
+              let guard = 0;
+              while (r.length > 3) {
+                if (guard++ > 4 * ring.length * ring.length + 100) throw new Error("poly-tri: the polygon could not be triangulated (self-intersecting?)");
+                let cut = -1;
+                for (let i = 0; i < r.length; i++) {
+                  const ia = r[(i + r.length - 1) % r.length], ib = r[i], ic = r[(i + 1) % r.length], a = V[ia], b = V[ib], c = V[ic];
+                  if (cross(a, b, c) <= EPS) continue;
+                  let ok = true;
+                  for (const k of r) {
+                    if (k === ia || k === ib || k === ic) continue;
+                    const q = V[k];
+                    if (same(q, a) || same(q, b) || same(q, c)) continue;
+                    if (inTri(q, a, b, c)) {
+                      ok = false;
+                      break;
+                    }
+                  }
+                  if (ok) {
+                    cut = i;
+                    tris.push([ia, ib, ic]);
+                    break;
+                  }
+                }
+                if (cut < 0) {
+                  const flat = r.findIndex((ib, i) => Math.abs(cross(V[r[(i + r.length - 1) % r.length]], V[ib], V[r[(i + 1) % r.length]])) <= EPS);
+                  if (flat < 0) throw new Error("poly-tri: the polygon could not be triangulated (self-intersecting?)");
+                  r.splice(flat, 1);
+                  continue;
+                }
+                r.splice(cut, 1);
+              }
+              if (r.length === 3 && cross(V[r[0]], V[r[1]], V[r[2]]) > EPS) tris.push([r[0], r[1], r[2]]);
+              return tris;
+            }
+            return { earClip };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/flipSlivers", [], function() {
+            const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+            const len = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+            function thin(p, t) {
+              const a = p[t[0]], b = p[t[1]], c = p[t[2]], L = Math.max(len(a, b), len(b, c), len(c, a));
+              return L > 0 ? Math.abs(cross(a, b, c)) / (L * L) : 0;
+            }
+            function flipSlivers(pts, tris, opts) {
+              const ratio = opts && opts.ratio || 1e-6, T = tris.map((t) => t.slice()), stats = { slivers: 0, flipped: 0 };
+              const ek = (u, v) => u + "," + v;
+              for (let pass = 0; pass < 8; pass++) {
+                const owner = /* @__PURE__ */ new Map();
+                T.forEach((t, ti) => {
+                  if (t) for (let k = 0; k < 3; k++) owner.set(ek(t[k], t[(k + 1) % 3]), ti);
+                });
+                let changed = false;
+                for (let ti = 0; ti < T.length; ti++) {
+                  const t = T[ti];
+                  if (!t || thin(pts, t) > ratio) continue;
+                  if (pass === 0) stats.slivers++;
+                  let kL = 0, best = -1;
+                  for (let k = 0; k < 3; k++) {
+                    const d = len(pts[t[k]], pts[t[(k + 1) % 3]]);
+                    if (d > best) {
+                      best = d;
+                      kL = k;
+                    }
+                  }
+                  const a = t[kL], b = t[(kL + 1) % 3], v = t[(kL + 2) % 3];
+                  const oi = owner.get(ek(b, a));
+                  if (oi == null) continue;
+                  const o = T[oi], x = o.find((w) => w !== a && w !== b);
+                  const n1 = [v, a, x], n2 = [v, x, b];
+                  if (!(cross(pts[n1[0]], pts[n1[1]], pts[n1[2]]) > 0 && cross(pts[n2[0]], pts[n2[1]], pts[n2[2]]) > 0)) continue;
+                  if (thin(pts, n1) <= ratio || thin(pts, n2) <= ratio) continue;
+                  T[ti] = n1;
+                  T[oi] = n2;
+                  stats.flipped++;
+                  changed = true;
+                  for (const [tt, id] of [[n1, ti], [n2, oi]]) for (let k = 0; k < 3; k++) owner.set(ek(tt[k], tt[(k + 1) % 3]), id);
+                  owner.delete(ek(a, b));
+                  owner.delete(ek(b, a));
+                }
+                if (!changed) break;
+              }
+              return { tris: T, stats };
+            }
+            return { flipSlivers };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/keepCollinear", ["2d/triangulate/basics"], function(K) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            function keepCollinear(pts, tris, dropped) {
+              const key = (a, b) => a < b ? a + "," + b : b + "," + a, uses = /* @__PURE__ */ new Map();
+              const count = (t, d) => {
+                for (let e = 0; e < 3; e++) {
+                  const k = key(t[e], t[(e + 1) % 3]);
+                  uses.set(k, (uses.get(k) || 0) + d);
+                }
+              };
+              tris = tris.map((t) => t.slice());
+              for (const t of tris) count(t, 1);
+              const inside = (p, a, b) => {
+                const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+                if (L2 <= 0) return false;
+                const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2;
+                return t > 1e-12 && t < 1 - 1e-12 && Math.abs(cross(a, b, p)) <= 1e-9 * L2;
+              };
+              for (const k of dropped) {
+                const p = pts[k];
+                split: for (let ti = 0; ti < tris.length; ti++) {
+                  const t = tris[ti];
+                  for (let e = 0; e < 3; e++) {
+                    const a = t[e], b = t[(e + 1) % 3], c = t[(e + 2) % 3];
+                    if (uses.get(key(a, b)) !== 1 || !inside(p, pts[a], pts[b])) continue;
+                    count(t, -1);
+                    const t1 = [a, k, c], t2 = [k, b, c];
+                    tris[ti] = t1;
+                    tris.push(t2);
+                    count(t1, 1);
+                    count(t2, 1);
+                    break split;
+                  }
+                }
+              }
+              return tris;
+            }
+            return { keepCollinear };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/region", ["2d/triangulate/basics", "2d/triangulate"], function(K, TR) {
+            const { area, pipXY } = K;
+            function containedIn(A, B) {
+              let inside = 0, outside = 0;
+              for (let i = 0; i < A.length && inside + outside < 3; i++) {
+                const p = A[i], q = A[(i + 1) % A.length], m2 = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+                if (onRing(m2, B)) continue;
+                if (pipXY(m2, B)) inside++;
+                else outside++;
+              }
+              return inside > outside;
+            }
+            function onRing(m2, B) {
+              for (let i = 0; i < B.length; i++) {
+                const a = B[i], b = B[(i + 1) % B.length], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+                if (!(L2 > 0)) continue;
+                const t = ((m2[0] - a[0]) * dx + (m2[1] - a[1]) * dy) / L2;
+                if (t < -1e-12 || t > 1 + 1e-12) continue;
+                if (Math.abs((m2[0] - a[0]) * dy - (m2[1] - a[1]) * dx) <= 1e-12 * L2) return true;
+              }
+              return false;
+            }
+            function triangulateRegion(rings, opts) {
+              const R = rings.filter((r) => r.length >= 3);
+              const absA = R.map((r) => Math.abs(area(r)));
+              const parents = R.map((r, i) => R.map((_, j) => j).filter((j) => j !== i && absA[j] > absA[i] && containedIn(r, R[j])));
+              const depth = parents.map((p) => p.length);
+              const pts = [], off = [];
+              R.forEach((r) => {
+                off.push(pts.length);
+                for (const p of r) pts.push([+p[0], +p[1]]);
+              });
+              const tris = [];
+              R.forEach((r, i) => {
+                if (depth[i] % 2) return;
+                const holes = R.map((_, j) => j).filter((j) => depth[j] === depth[i] + 1 && parents[j].includes(i));
+                const t = TR.triangulate(r, holes.map((j) => R[j]), opts);
+                const ids = r.map((_, k) => off[i] + k);
+                for (const j of holes) for (let k = 0; k < R[j].length; k++) ids.push(off[j] + k);
+                for (const tri of t.tris) tris.push([ids[tri[0]], ids[tri[1]], ids[tri[2]]]);
+              });
+              return { pts, tris };
+            }
+            return { triangulateRegion };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate", ["2d/triangulate/basics", "2d/triangulate/cleanRing", "2d/triangulate/bridge", "2d/triangulate/earClip", "2d/triangulate/assertSimple", "2d/triangulate/keepCollinear"], function(K, CR, BR, EC, AS, KC) {
+            const { EPS, area, cross, same, ringArea, inTri, pipXY, segsCross } = K;
+            const { cleanRing } = CR, { bridge } = BR, { earClip } = EC, { assertSimple } = AS, { keepCollinear } = KC;
+            function triangulate(outer, holes, opts) {
+              const pts = outer.map((p) => [+p[0], +p[1]]), hs = [];
+              for (const h of holes || []) {
+                const o = pts.length;
+                for (const p of h) pts.push([+p[0], +p[1]]);
+                hs.push(h.map((_, k) => o + k));
+              }
+              const pos = /* @__PURE__ */ new Map(), owner = (k) => k < outer.length ? -1 : hs.findIndex((h) => h.includes(k));
+              for (let k = 0; k < pts.length; k++) {
+                const key = pts[k][0] + "," + pts[k][1];
+                if (!pos.has(key)) pos.set(key, /* @__PURE__ */ new Set());
+                pos.get(key).add(owner(k));
+              }
+              const keep = (k) => pos.get(pts[k][0] + "," + pts[k][1]).size > 1;
+              let ring = cleanRing(pts, outer.map((_, k) => k), keep);
+              if (ring.length < 3) return { pts, tris: [] };
+              if (ringArea(pts, ring) < 0) ring.reverse();
+              const hr = hs.map((h) => {
+                let r = cleanRing(pts, h, keep);
+                if (ringArea(pts, r) > 0) r.reverse();
+                return r;
+              }).filter((r) => r.length >= 3);
+              assertSimple(pts, [ring].concat(hr));
+              hr.sort((a, b) => Math.max(...b.map((k) => pts[k][0])) - Math.max(...a.map((k) => pts[k][0])));
+              const kept = /* @__PURE__ */ new Set([...ring, ...hr.flat()]);
+              for (let k = 0; k < hr.length; k++) ring = bridge(pts, ring, hr[k], hr.slice(k + 1));
+              const tris = earClip(pts, ring);
+              if (!(opts && opts.keepCollinear)) return { pts, tris };
+              const dropped = [];
+              for (let k = 0; k < pts.length; k++) if (!kept.has(k) && ![...kept, ...dropped].some((j) => same(pts[j], pts[k]))) dropped.push(k);
+              return { pts, tris: keepCollinear(pts, tris, dropped) };
+            }
+            return { area, triangulate };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("2d/triangulate/untangle", [], function() {
+            const area = (P, L) => {
+              let a = 0;
+              for (let i = 0; i < L.length; i++) {
+                const p = P[L[i]], q = P[L[(i + 1) % L.length]];
+                a += p[0] * q[1] - q[0] * p[1];
+              }
+              return a / 2;
+            };
+            function onSeg(P, v, a, b, tol) {
+              const A = P[a], B = P[b], Q = P[v], dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy;
+              if (!(L2 > 0)) return false;
+              const t = ((Q[0] - A[0]) * dx + (Q[1] - A[1]) * dy) / L2;
+              if (t <= 1e-12 || t >= 1 - 1e-12) return false;
+              const ex = A[0] + t * dx - Q[0], ey = A[1] + t * dy - Q[1];
+              return ex * ex + ey * ey <= tol * tol ? t : false;
+            }
+            function untangle(P, loops, tol) {
+              const all = [...new Set([].concat(...loops))];
+              const split = loops.map((L) => {
+                const out = [];
+                for (let i = 0; i < L.length; i++) {
+                  const a = L[i], b = L[(i + 1) % L.length];
+                  out.push(a);
+                  const ins = [];
+                  for (const v of all) {
+                    if (v === a || v === b) continue;
+                    const t = onSeg(P, v, a, b, tol);
+                    if (t !== false) ins.push([t, v]);
+                  }
+                  ins.sort((x, y) => x[0] - y[0]);
+                  for (const [, v] of ins) out.push(v);
+                }
+                return out;
+              });
+              const result = [];
+              for (const L0 of split) {
+                const stack = [L0];
+                while (stack.length) {
+                  const L = stack.pop();
+                  const seen = /* @__PURE__ */ new Map();
+                  let cut = null;
+                  for (let i2 = 0; i2 < L.length && !cut; i2++) {
+                    if (seen.has(L[i2])) cut = [seen.get(L[i2]), i2];
+                    else seen.set(L[i2], i2);
+                  }
+                  if (!cut) {
+                    if (L.length >= 3 && Math.abs(area(P, L)) > 0) result.push(L);
+                    continue;
+                  }
+                  const [i, j] = cut;
+                  stack.push(L.slice(i, j));
+                  stack.push(L.slice(0, i).concat(L.slice(j)));
+                }
+              }
+              return result;
+            }
+            return { untangle };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/boolean/assemble", ["solids/point", "solids/plane2d/frame"], function(PT, FR) {
+            function assemble(T, outFaces) {
+              const verts = [], vid = /* @__PURE__ */ new Map();
+              const vOf = (p) => {
+                const k = PT.key(p);
+                let i = vid.get(k);
+                if (i == null) {
+                  i = verts.length;
+                  vid.set(k, i);
+                  verts.push({ p: p.p.slice(), h: p.h, f: p.f, on: new Set(p.p), _key: k });
+                }
+                return i;
+              };
+              const byPS = /* @__PURE__ */ new Map();
+              for (const of of outFaces) {
+                const k = of.plane + ":" + of.sign;
+                let f = byPS.get(k);
+                if (!f) {
+                  f = { plane: of.plane, sign: of.sign, loops: [], epl: [] };
+                  byPS.set(k, f);
+                }
+                for (const l of of.loops) {
+                  f.loops.push(l.pts.map(vOf));
+                  f.epl.push(l.X.slice());
+                }
+              }
+              const faces = [...byPS.values()];
+              const stats = { tInserted: conform(T, faces, verts) };
+              for (const f of faces) f.loops.forEach((L, li) => L.forEach((v, i) => {
+                const on = verts[v].on;
+                on.add(f.plane);
+                on.add(f.epl[li][i]);
+                on.add(f.epl[li][(i - 1 + L.length) % L.length]);
+              }));
+              return { T, faces, verts, stats };
+            }
+            function conform(T, faces, verts) {
+              const xyz = verts.map((v) => PT.coords(T, v));
+              let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+              for (const c of xyz) for (let k = 0; k < 3; k++) {
+                lo[k] = Math.min(lo[k], c[k]);
+                hi[k] = Math.max(hi[k], c[k]);
+              }
+              const span = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1e-12), cell = span / Math.max(1, Math.cbrt(verts.length)) + 1e-12;
+              const grid = /* @__PURE__ */ new Map(), gk = (i, j, k) => i + "," + j + "," + k, ci = (x, k) => Math.floor((x - lo[k]) / cell);
+              xyz.forEach((c, v) => {
+                const k = gk(ci(c[0], 0), ci(c[1], 1), ci(c[2], 2));
+                if (!grid.has(k)) grid.set(k, []);
+                grid.get(k).push(v);
+              });
+              const m2 = 1e-9 * (span + 1);
+              let inserted = 0;
+              const frames = /* @__PURE__ */ new Map(), frameOf = (P) => {
+                let F = frames.get(P);
+                if (!F) {
+                  F = FR.frame(T, P);
+                  frames.set(P, F);
+                }
+                return F;
+              };
+              for (const f of faces) {
+                const F = frameOf(f.plane);
+                f.loops.forEach((L, li) => {
+                  const E = f.epl[li], NL = [], NE = [];
+                  for (let i = 0; i < L.length; i++) {
+                    const u = L[i], w = L[(i + 1) % L.length], X = E[i];
+                    NL.push(u);
+                    NE.push(X);
+                    const a = xyz[u], b = xyz[w];
+                    const cand = [];
+                    const i0 = ci(Math.min(a[0], b[0]) - m2, 0), i1 = ci(Math.max(a[0], b[0]) + m2, 0), j0 = ci(Math.min(a[1], b[1]) - m2, 1), j1 = ci(Math.max(a[1], b[1]) + m2, 1), k0 = ci(Math.min(a[2], b[2]) - m2, 2), k1 = ci(Math.max(a[2], b[2]) + m2, 2);
+                    for (let x = i0; x <= i1; x++) for (let y = j0; y <= j1; y++) for (let z = k0; z <= k1; z++) {
+                      const list = grid.get(gk(x, y, z));
+                      if (!list) continue;
+                      for (const v of list) {
+                        if (v === u || v === w) continue;
+                        const c = xyz[v];
+                        if (c[0] < Math.min(a[0], b[0]) - m2 || c[0] > Math.max(a[0], b[0]) + m2 || c[1] < Math.min(a[1], b[1]) - m2 || c[1] > Math.max(a[1], b[1]) + m2 || c[2] < Math.min(a[2], b[2]) - m2 || c[2] > Math.max(a[2], b[2]) + m2) continue;
+                        const pv = verts[v];
+                        if (PT.side(T, f.plane, pv) !== 0 || PT.side(T, X, pv) !== 0) continue;
+                        const c1 = F.lex(verts[u], pv), c2 = F.lex(pv, verts[w]);
+                        if (c1 !== 0 && c1 === c2) cand.push(v);
+                      }
+                    }
+                    if (cand.length) {
+                      const asc = F.lex(verts[u], verts[w]) < 0;
+                      cand.sort((p, q) => asc ? F.lex(verts[p], verts[q]) : F.lex(verts[q], verts[p]));
+                      for (const v of cand) {
+                        NL.push(v);
+                        NE.push(X);
+                        inserted++;
+                      }
+                    }
+                  }
+                  f.loops[li] = NL;
+                  f.epl[li] = NE;
+                });
+              }
+              return inserted;
+            }
+            return { assemble };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/boolean", ["solids/plane2d/frame", "solids/section", "solids/region2d/evaluate", "solids/boolean/assemble", "solids/point", "solids/region2d/reverse"], function(FR, SEC, EV, AS, PT, RV) {
+            const RULES = {
+              union: [
+                (w) => w[0] > 0 && !(w[6] > 0) || w[2] > 0 && !(w[4] > 0) && !(w[0] > 0),
+                (w) => w[1] > 0 && !(w[7] > 0) || w[3] > 0 && !(w[5] > 0) && !(w[1] > 0)
+              ],
+              intersection: [
+                (w) => w[0] > 0 && w[7] > 0 || w[2] > 0 && w[5] > 0 && !(w[0] > 0),
+                (w) => w[1] > 0 && w[6] > 0 || w[3] > 0 && w[4] > 0 && !(w[1] > 0)
+              ],
+              difference: [
+                (w) => w[0] > 0 && !(w[7] > 0) || w[3] > 0 && w[5] > 0 && !(w[0] > 0),
+                (w) => w[1] > 0 && !(w[6] > 0) || w[2] > 0 && w[4] > 0 && !(w[1] > 0)
+              ]
+            };
+            function bbox(S) {
+              const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+              for (const v of S.verts) {
+                const c = PT.coords(S.T, v);
+                for (let k = 0; k < 3; k++) {
+                  if (c[k] < b[k]) b[k] = c[k];
+                  if (c[k] > b[k + 3]) b[k + 3] = c[k];
+                }
+              }
+              return b;
+            }
+            function cutsBox(T, P, b) {
+              const n = T.normal(P), p = T.get(P), d = p.fe / (Math.hypot(p.fa, p.fb, p.fc) * Math.pow(2, T.gridExp));
+              let lo = Infinity, hi = -Infinity;
+              for (let i = 0; i < 8; i++) {
+                const x = [i & 1 ? b[3] : b[0], i & 2 ? b[4] : b[1], i & 4 ? b[5] : b[2]];
+                const s = n[0] * x[0] + n[1] * x[1] + n[2] * x[2] + d;
+                lo = Math.min(lo, s);
+                hi = Math.max(hi, s);
+              }
+              const m2 = 1e-7 * (Math.abs(b[0]) + Math.abs(b[1]) + Math.abs(b[2]) + Math.abs(b[3]) + Math.abs(b[4]) + Math.abs(b[5]) + 1);
+              return lo <= m2 && hi >= -m2;
+            }
+            function faceEdges(S, F, P, sign, list) {
+              const out = [];
+              for (const f of list || S.faces) {
+                if (f.plane !== P || f.sign !== sign) continue;
+                f.loops.forEach((L, li) => {
+                  for (let i = 0; i < L.length; i++) {
+                    let a = S.verts[L[i]], b = S.verts[L[(i + 1) % L.length]];
+                    if (PT.equal(a, b)) continue;
+                    const X = f.epl[li][i];
+                    if (sign < 0) {
+                      const t = a;
+                      a = b;
+                      b = t;
+                    }
+                    out.push({ a, b, X, s: F.sense(X, a, b) });
+                  }
+                });
+              }
+              return out;
+            }
+            function copyLoops(S, f) {
+              return f.loops.map((L, li) => ({ pts: L.map((v) => S.verts[v]), X: f.epl[li].slice() }));
+            }
+            function boolean(op, A, B, opts) {
+              const rules = RULES[op];
+              if (!rules) throw new Error("geokernel.boolean: operaci\xF3 desconeguda \xAB" + op + "\xBB (union | intersection | difference)");
+              if (A.T !== B.T) throw new Error("geokernel.boolean: els dos s\xF2lids han de compartir la taula de plans");
+              const T = A.T, bA = bbox(A), bB = bbox(B);
+              const planes = /* @__PURE__ */ new Set();
+              A.faces.forEach((f) => planes.add(f.plane));
+              B.faces.forEach((f) => planes.add(f.plane));
+              const outFaces = [], stats = { planes: planes.size, trivial: 0, computed: 0 };
+              const byPlane = (S) => {
+                const m2 = /* @__PURE__ */ new Map();
+                for (const f of S.faces) {
+                  if (!m2.has(f.plane)) m2.set(f.plane, []);
+                  m2.get(f.plane).push(f);
+                }
+                return m2;
+              };
+              const fA = byPlane(A), fB = byPlane(B);
+              const xyz = (S) => {
+                const c = /* @__PURE__ */ new Map();
+                return (v) => {
+                  let r = c.get(v);
+                  if (!r) c.set(v, r = PT.coords(S.T, S.verts[v]));
+                  return r;
+                };
+              };
+              const cA = xyz(A), cB = xyz(B);
+              const faceOut = (S, cs, f, b) => {
+                const m2 = 1e-7 * (Math.abs(b[0]) + Math.abs(b[1]) + Math.abs(b[2]) + Math.abs(b[3]) + Math.abs(b[4]) + Math.abs(b[5]) + 1);
+                const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+                for (const L of f.loops) for (const v of L) {
+                  const c = cs(v);
+                  for (let k = 0; k < 3; k++) {
+                    if (c[k] < lo[k]) lo[k] = c[k];
+                    if (c[k] > hi[k]) hi[k] = c[k];
+                  }
+                }
+                for (let k = 0; k < 3; k++) if (hi[k] < b[k] - m2 || lo[k] > b[k + 3] + m2) return true;
+                return false;
+              };
+              const away = (S, cs, list, b) => list.every((f) => faceOut(S, cs, f, b));
+              for (const P of planes) {
+                const inA = fA.has(P), inB = fB.has(P);
+                if (inA && !inB && (!cutsBox(T, P, bB) || away(A, cA, fA.get(P), bB))) {
+                  stats.trivial++;
+                  if (op !== "intersection") for (const f of fA.get(P)) outFaces.push({ plane: P, sign: f.sign, loops: copyLoops(A, f) });
+                  continue;
+                }
+                if (inB && !inA && (!cutsBox(T, P, bA) || away(B, cB, fB.get(P), bA))) {
+                  stats.trivial++;
+                  if (op === "union") for (const f of fB.get(P)) outFaces.push({ plane: P, sign: f.sign, loops: copyLoops(B, f) });
+                  continue;
+                }
+                stats.computed++;
+                const F = FR.frame(T, P);
+                const ops = [faceEdges(A, F, P, 1, fA.get(P) || []), faceEdges(A, F, P, -1, fA.get(P) || []), faceEdges(B, F, P, 1, fB.get(P) || []), faceEdges(B, F, P, -1, fB.get(P) || [])];
+                ops.push(inB ? SEC.section(A, P, 1, F) : [], inB ? SEC.section(A, P, -1, F) : []);
+                ops.push(inA ? SEC.section(B, P, 1, F) : [], inA ? SEC.section(B, P, -1, F) : []);
+                const [plus, minus] = EV.evaluate(T, F, ops, rules);
+                if (plus.length) outFaces.push({ plane: P, sign: 1, loops: plus });
+                if (minus.length) outFaces.push({ plane: P, sign: -1, loops: minus.map(RV.reverseLoop) });
+              }
+              const R = AS.assemble(T, outFaces);
+              R.stats = Object.assign(stats, R.stats || {});
+              return R;
+            }
+            return { boolean, RULES };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/boolean/chainMesh", ["solids/diag/chain", "solids/brep/toMesh", "solids/validate/mesh"], function(CH, TM, VM) {
+            function chainMesh(pc, opts) {
+              const r = CH.runChain(pc, opts), total = pc.ops.length;
+              if (r.error) return { ok: false, error: r.error, steps: Math.max(r.step, 0), total };
+              let m2;
+              try {
+                m2 = TM.toMesh(r.X);
+              } catch (e) {
+                return { ok: false, error: "malla final: " + e.message, steps: total, total };
+              }
+              const v = VM.check(m2);
+              return { ok: !v.naked && !v.misoriented, positions: Array.from(m2.positions), indices: Array.from(m2.indices), steps: total, total, naked: v.naked, nonManifold: v.nonManifold, volume: v.volume };
+            }
+            return { chainMesh };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/boolean/mesh", ["solids/plane", "solids/brep/fromMesh", "solids/brep/toMesh", "solids/boolean", "solids/repair"], function(PL, FM, TM, BO, RP) {
+            function booleanMesh(op, a, b, opts) {
+              opts = Object.assign({}, opts);
+              const T = PL.table(opts);
+              let repairStats = null;
+              if (opts.repair) {
+                const ra = RP.repair(a, { tol: opts.repair }), rb = RP.repair(b, { tol: opts.repair });
+                a = ra;
+                b = rb;
+                repairStats = { A: ra.stats, B: rb.stats };
+                if (opts.distTol == null) opts.distTol = opts.repair;
+              }
+              const A = FM.fromMesh(T, a, opts), B = FM.fromMesh(T, b, opts);
+              const R = BO.boolean(op, A, B, opts);
+              const m2 = TM.toMesh(R);
+              m2.stats = Object.assign({ repair: repairStats }, R.stats);
+              return m2;
+            }
+            return { booleanMesh };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def(
+            "solids/boolean/webifc",
+            ["solids/plane", "solids/repair", "solids/brep/fromMesh", "solids/boolean", "solids/brep/toMesh", "solids/validate/mesh"],
+            function(PL, RP, FM, BO, TM, VM) {
+              const memo = /* @__PURE__ */ new Map(), MAX = 64, stats = { calls: 0, reused: 0, fresh: 0, failed: 0 };
+              function keyOf(m2) {
+                const f = m2.positions instanceof Float64Array ? m2.positions : Float64Array.from(m2.positions);
+                const u32 = new Uint32Array(f.buffer, f.byteOffset, f.length * 2);
+                let h1 = 2166136261, h2 = 16777619;
+                for (let i = 0; i < u32.length; i++) {
+                  h1 = Math.imul(h1 ^ u32[i], 16777619);
+                  h2 = Math.imul(h2 ^ u32[i] + i, 2246822519);
+                }
+                const I = m2.indices;
+                for (let i = 0; i < I.length; i++) {
+                  h1 = Math.imul(h1 ^ I[i], 16777619);
+                  h2 = Math.imul(h2 ^ I[i] + i, 2246822519);
+                }
+                return (h1 >>> 0).toString(36) + ":" + (h2 >>> 0).toString(36) + ":" + f.length + ":" + I.length;
+              }
+              function scaled(m2, k) {
+                const P = new Float64Array(m2.positions.length);
+                for (let i = 0; i < P.length; i++) P[i] = m2.positions[i] * k;
+                return { positions: P, indices: m2.indices };
+              }
+              function webifcBool(op, a, b, opts) {
+                opts = opts || {};
+                const u = opts.unitToMetre || 1, tol = opts.tol || 1e-4;
+                const o = { union: "union", difference: "difference", intersection: "intersection", UNION: "union", DIFFERENCE: "difference", INTERSECTION: "intersection" }[op];
+                if (!o) throw new Error("geokernel.webifcBool: operaci\xF3 desconeguda \xAB" + op + "\xBB");
+                stats.calls++;
+                for (const [nm, m2] of [["A", a], ["B", b]]) {
+                  const nv = m2.positions.length / 3, I = m2.indices;
+                  if (m2.positions.length % 3 || I.length % 3) throw new Error("geokernel.webifcBool: " + nm + " mal formada (" + m2.positions.length + " coordenades, " + I.length + " \xEDndexs)");
+                  for (let i = 0; i < I.length; i++) if (!(I[i] >= 0 && I[i] < nv)) throw new Error("geokernel.webifcBool: " + nm + " t\xE9 un \xEDndex fora de rang (" + I[i] + " amb " + nv + " v\xE8rtexs, posici\xF3 " + i + ")");
+                }
+                const vol = (m2) => {
+                  const P = m2.positions, I = m2.indices;
+                  let v = 0;
+                  for (let t = 0; t < I.length; t += 3) {
+                    const a2 = 3 * I[t], b2 = 3 * I[t + 1], c = 3 * I[t + 2];
+                    v += P[a2] * (P[b2 + 1] * P[c + 2] - P[b2 + 2] * P[c + 1]) - P[a2 + 1] * (P[b2] * P[c + 2] - P[b2 + 2] * P[c]) + P[a2 + 2] * (P[b2] * P[c + 1] - P[b2 + 1] * P[c]);
+                  }
+                  return Math.abs(v / 6) * u * u * u;
+                };
+                const EMPTY_V = 1e-12;
+                if (vol(b) < EMPTY_V && (o === "difference" || o === "union")) {
+                  stats.emptyOperand = (stats.emptyOperand || 0) + 1;
+                  return { positions: Float64Array.from(a.positions), indices: Uint32Array.from(a.indices), stats: { triangles: a.indices.length / 3, volume: vol(a) / (u * u * u), emptyB: true } };
+                }
+                if (vol(b) < EMPTY_V && o === "intersection") {
+                  stats.emptyOperand = (stats.emptyOperand || 0) + 1;
+                  return { positions: new Float64Array(0), indices: new Uint32Array(0), stats: { triangles: 0, volume: 0, emptyB: true } };
+                }
+                try {
+                  const prev = memo.get(keyOf(a));
+                  let A, T;
+                  if (prev) {
+                    A = prev;
+                    T = prev.T;
+                    stats.reused++;
+                  } else {
+                    T = PL.table({});
+                    A = FM.fromMesh(T, RP.repair(scaled(a, u), { tol }), { distTol: tol });
+                    stats.fresh++;
+                  }
+                  const B = FM.fromMesh(T, RP.repair(scaled(b, u), { tol }), { distTol: tol });
+                  const X = BO.boolean(o, A, B);
+                  const m2 = TM.toMesh(X, { weld: opts.outWeld || 1e-6 }), v = VM.check(m2);
+                  if (v.naked || v.misoriented) throw new Error("geokernel.webifcBool: resultat obert (" + v.naked + " nues, " + v.misoriented + " mal orientades)");
+                  let degW = 0;
+                  {
+                    const P = m2.positions, I = m2.indices, lim = 1e-10 * u * u;
+                    let deg = 0;
+                    for (let t = 0; t < I.length; t += 3) {
+                      const p = 3 * I[t], q = 3 * I[t + 1], r = 3 * I[t + 2];
+                      const ax = P[q] - P[p], ay = P[q + 1] - P[p + 1], az = P[q + 2] - P[p + 2], bx = P[r] - P[p], by = P[r + 1] - P[p + 1], bz = P[r + 2] - P[p + 2];
+                      if (Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx) <= lim) deg++;
+                    }
+                    degW = deg;
+                    if (deg) stats.degenerateForWebifc = (stats.degenerateForWebifc || 0) + deg;
+                  }
+                  const out = scaled(m2, 1 / u);
+                  out.indices = Uint32Array.from(m2.indices);
+                  memo.set(keyOf(out), X);
+                  if (memo.size > MAX) memo.delete(memo.keys().next().value);
+                  return { positions: out.positions, indices: out.indices, stats: { triangles: m2.indices.length / 3, volume: v.volume / (u * u * u), reused: !!prev, degenerateForWebifc: degW } };
+                } catch (e) {
+                  stats.failed++;
+                  throw e;
+                }
+              }
+              return { webifcBool, webifcBoolStats: () => Object.assign({ memo: memo.size }, stats) };
+            }
+          );
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/check", [], function() {
+            function check(S) {
+              const cnt = /* @__PURE__ */ new Map();
+              let edges = 0;
+              for (const F of S.faces) for (const L of F.loops) for (let i = 0; i < L.length; i++) {
+                const k = L[i] + "," + L[(i + 1) % L.length];
+                cnt.set(k, (cnt.get(k) || 0) + 1);
+                edges++;
+              }
+              let naked = 0, nonManifold = 0;
+              for (const [k, c] of cnt) {
+                const [u, w] = k.split(",");
+                const t = cnt.get(w + "," + u) || 0;
+                if (t < c) naked += c - t;
+                if (c > 1 && +u < +w) nonManifold++;
+              }
+              return { edges, naked, nonManifold, ok: naked === 0 };
+            }
+            return { check };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/concur", ["solids/point", "solids/exact/bigint"], function(PT, B) {
+            const MAX_BITS = 600;
+            function fitPlane(T, p, pts) {
+              if (pts.length === 1) {
+                const [X, Y, Z, W] = pts[0].h;
+                return { a: p.a * W, b: p.b * W, c: p.c * W, e: -(p.a * X + p.b * Y + p.c * Z) };
+              }
+              if (pts.length === 2) {
+                const [X1, Y1, Z1, W1] = pts[0].h, [X2, Y2, Z2, W2] = pts[1].h;
+                const t = [X2 * W1 - X1 * W2, Y2 * W1 - Y1 * W2, Z2 * W1 - Z1 * W2];
+                const n = [p.a, p.b, p.c];
+                const cr = (u2, v) => [u2[1] * v[2] - u2[2] * v[1], u2[2] * v[0] - u2[0] * v[2], u2[0] * v[1] - u2[1] * v[0]];
+                const u = cr(n, t), N = cr(t, u);
+                if (N[0] === 0n && N[1] === 0n && N[2] === 0n) return null;
+                return { a: N[0] * W1, b: N[1] * W1, c: N[2] * W1, e: -(N[0] * X1 + N[1] * Y1 + N[2] * Z1) };
+              }
+              const [r1, r2, r3] = pts.map((q) => q.h);
+              const m2 = (i, j, k) => B.det3(r1[i], r1[j], r1[k], r2[i], r2[j], r2[k], r3[i], r3[j], r3[k]);
+              const a = m2(1, 2, 3), b = -m2(0, 2, 3), c = m2(0, 1, 3), e = -m2(0, 1, 2);
+              if (a === 0n && b === 0n && c === 0n) return null;
+              return { a, b, c, e };
+            }
+            function cond(T, ids) {
+              const n = ids.map((id) => T.normal(id)), [a, b, c] = n;
+              return Math.abs(a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]));
+            }
+            function concur(T, faces, inc, V, opts) {
+              const distTol = opts.distTol;
+              const list = [];
+              for (const [v, set] of inc) if (set.size >= 4) list.push({ v, ids: [...set] });
+              const G0 = Math.pow(2, T.gridExp);
+              const pl3 = (id) => {
+                const p = T.get(id);
+                return [p.fa, p.fb, p.fc, p.fe / G0];
+              };
+              const meet = (A, Bp, C) => {
+                const d = A[0] * (Bp[1] * C[2] - Bp[2] * C[1]) - A[1] * (Bp[0] * C[2] - Bp[2] * C[0]) + A[2] * (Bp[0] * C[1] - Bp[1] * C[0]);
+                if (!d) return null;
+                const r = [-A[3], -Bp[3], -C[3]];
+                const x = (r[0] * (Bp[1] * C[2] - Bp[2] * C[1]) - A[1] * (r[1] * C[2] - Bp[2] * r[2]) + A[2] * (r[1] * C[1] - Bp[1] * r[2])) / d;
+                const y = (A[0] * (r[1] * C[2] - Bp[2] * r[2]) - r[0] * (Bp[0] * C[2] - Bp[2] * C[0]) + A[2] * (Bp[0] * r[2] - r[1] * C[0])) / d;
+                const z = (A[0] * (Bp[1] * r[2] - r[1] * C[1]) - A[1] * (Bp[0] * r[2] - r[1] * C[0]) + r[0] * (Bp[0] * C[1] - Bp[1] * C[0])) / d;
+                return [x, y, z];
+              };
+              const spread = (ids) => {
+                const pts = [], L = ids.map(pl3);
+                for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) {
+                  const p = meet(L[i], L[j], L[k]);
+                  if (p && p.every(Number.isFinite)) pts.push(p);
+                }
+                let d = 0;
+                for (const a of pts) for (const b of pts) d = Math.max(d, Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]));
+                return d;
+              };
+              list.forEach((x) => {
+                x.spread = spread(x.ids);
+              });
+              list.sort((x, y) => y.spread - x.spread);
+              const facesOf = /* @__PURE__ */ new Map();
+              for (const F of faces) {
+                if (!facesOf.has(F.plane)) facesOf.set(F.plane, []);
+                facesOf.get(F.plane).push(F);
+              }
+              const fixed = /* @__PURE__ */ new Set();
+              let res = null;
+              for (let round = 0; round < 6; round++) {
+                res = run(fixed);
+                const bad = res.rejectedIds.filter((id) => !fixed.has(id));
+                if (!bad.length) break;
+                bad.forEach((id) => fixed.add(id));
+              }
+              res.stats.fixed = fixed.size;
+              return { changed: res.changed, stats: res.stats };
+              function run(fixed2) {
+                const stats = { vertices: 0, planes: 0, conflict: 0, rejected: 0, why: [], conflicts: [] }, adj = /* @__PURE__ */ new Map(), defs = /* @__PURE__ */ new Set(), rejectedIds = [];
+                for (const { ids } of list) {
+                  const tri = [];
+                  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) tri.push([ids[i], ids[j], ids[k]]);
+                  const cv = new Map(tri.map((t) => [t, cond(T, t)]));
+                  tri.sort((x, y) => cv.get(y) - cv.get(x));
+                  let pick = null;
+                  const mustFix = ids.filter((id) => fixed2.has(id));
+                  const c0 = tri.length ? cv.get(tri[0]) : 0;
+                  for (const t of tri) {
+                    if (cv.get(t) < 0.5 * c0) break;
+                    if (t.some((id) => adj.has(id)) || mustFix.some((id) => !t.includes(id))) continue;
+                    const p = PT.make(T, t[0], t[1], t[2]);
+                    if (!p) continue;
+                    const others2 = ids.filter((id) => !t.includes(id) && PT.side(T, id, Object.assign({}, p, { on: /* @__PURE__ */ new Set() })) !== 0);
+                    if (others2.some((id) => defs.has(id))) continue;
+                    pick = { t, p, others: others2 };
+                    break;
+                  }
+                  if (!pick) {
+                    stats.conflict++;
+                    if (stats.conflicts.length < 6) stats.conflicts.push({ ids, cond: tri.map((t) => +cv.get(t).toFixed(4)), adj: ids.filter((id) => adj.has(id)), defs: ids.filter((id) => defs.has(id)), fixed: mustFix });
+                    continue;
+                  }
+                  const others = pick.others;
+                  if (!others.length) continue;
+                  pick.t.forEach((id) => defs.add(id));
+                  for (const id of others) {
+                    if (!adj.has(id)) adj.set(id, []);
+                    adj.get(id).push(pick.p);
+                  }
+                  stats.vertices++;
+                }
+                const changed = /* @__PURE__ */ new Map();
+                const G = Math.pow(2, T.gridExp);
+                for (const [id, pts0] of adj) {
+                  const seen = /* @__PURE__ */ new Set(), pts = pts0.filter((q) => {
+                    const k = PT.key(q);
+                    if (seen.has(k)) return false;
+                    seen.add(k);
+                    return true;
+                  });
+                  const p = T.get(id);
+                  let pl = fitPlane(T, p, pts.slice(0, 3));
+                  if (pl && pts.length > 3) {
+                    const s = (q) => pl.a * q.h[0] + pl.b * q.h[1] + pl.c * q.h[2] + pl.e * q.h[3];
+                    if (pts.slice(3).some((q) => s(q) !== 0n)) pl = null;
+                  }
+                  if (!pl) {
+                    stats.rejected++;
+                    stats.why.push({ plane: id, anchors: pts.length, reason: "cap pla exacte pels punts" });
+                    rejectedIds.push(id);
+                    continue;
+                  }
+                  {
+                    const g = B.gcdAll([pl.a, pl.b, pl.c, pl.e]);
+                    pl = { a: pl.a / g, b: pl.b / g, c: pl.c / g, e: pl.e / g, reduced: true };
+                    const big = [pl.a, pl.b, pl.c, pl.e].some((x) => (x < 0n ? -x : x).toString(2).length > MAX_BITS);
+                    if (big) {
+                      stats.rejected++;
+                      stats.why.push({ plane: id, anchors: pts.length, reason: "enters massa grans (> " + MAX_BITS + " bits)" });
+                      rejectedIds.push(id);
+                      continue;
+                    }
+                  }
+                  const fa = Number(pl.a), fb = Number(pl.b), fc = Number(pl.c), l = Math.hypot(fa, fb, fc), fe = Number(pl.e);
+                  const dist = (x) => (fa * x[0] * G + fb * x[1] * G + fc * x[2] * G + fe) / l / G;
+                  let ok = Number.isFinite(l) && l > 0, worst = 0;
+                  for (const F of facesOf.get(id) || []) if (ok) for (const L of F.loops) for (const v of L) {
+                    const d = Math.abs(dist(V[v]));
+                    worst = Math.max(worst, d);
+                    if (d > distTol) ok = false;
+                  }
+                  const n0 = T.normal(id), same = (n0[0] * fa + n0[1] * fb + n0[2] * fc) / l;
+                  if (!ok || !(Math.abs(same) > 0.999)) {
+                    stats.rejected++;
+                    stats.why.push({ plane: id, anchors: pts.length, worst, cos: same });
+                    rejectedIds.push(id);
+                    continue;
+                  }
+                  const r = T.fromInts(pl.a, pl.b, pl.c, pl.e, pl.reduced);
+                  changed.set(id, { id: r.id, sign: r.sign * (same > 0 ? 1 : -1) });
+                  stats.planes++;
+                }
+                return { changed, stats, rejectedIds };
+              }
+            }
+            return { concur, fitPlane };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/corners", ["solids/point"], function(PT) {
+            function corners(S, f) {
+              if (f._corners) return f._corners;
+              f._corners = f.loops.map((L, li) => {
+                const E = f.epl[li], n = L.length;
+                return L.map((v, i) => {
+                  const ep = E[(i - 1 + n) % n], en = E[i];
+                  if (ep === en) return S.verts[v];
+                  const c = PT.make(S.T, f.plane, ep, en);
+                  if (!c) return S.verts[v];
+                  c.on.add(f.plane);
+                  return c;
+                });
+              });
+              return f._corners;
+            }
+            return { corners };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/fromMesh", ["solids/point", "solids/plane/snap", "solids/brep/twins", "solids/brep/regularize", "solids/brep/resolveVertices", "solids/brep/concur", "solids/brep/untwist"], function(PT, SNAP, TW, RG, RV, CC, UW) {
+            function fromMesh(T, mesh, opts) {
+              opts = opts || {};
+              const weld = opts.weld || 1e-9, angTol = opts.angTol || 1e-3, distTol = opts.distTol || 1e-6;
+              const P = mesh.positions, I = mesh.indices;
+              const key = /* @__PURE__ */ new Map(), V = [], remap = new Int32Array(P.length / 3);
+              for (let i = 0; i < P.length / 3; i++) {
+                const k = Math.round(P[3 * i] / weld) + "," + Math.round(P[3 * i + 1] / weld) + "," + Math.round(P[3 * i + 2] / weld);
+                let id = key.get(k);
+                if (id == null) {
+                  id = V.length;
+                  key.set(k, id);
+                  V.push([P[3 * i], P[3 * i + 1], P[3 * i + 2]]);
+                }
+                remap[i] = id;
+              }
+              const tris = [];
+              for (let t = 0; t < I.length; t += 3) {
+                const a = remap[I[t]], b = remap[I[t + 1]], c = remap[I[t + 2]];
+                if (a === b || b === c || c === a) continue;
+                const p = V[a], q = V[b], r = V[c];
+                const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], v = [r[0] - p[0], r[1] - p[1], r[2] - p[2]];
+                const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+                const ar = Math.hypot(n[0], n[1], n[2]);
+                if (!(ar > 0)) continue;
+                tris.push({ v: [a, b, c], n, ar, nu: [n[0] / ar, n[1] / ar, n[2] / ar], g: -1, f: mesh.faceOf ? mesh.faceOf[t / 3] : void 0 });
+              }
+              const tw = TW.twins(V, tris);
+              const groups = [];
+              if (tris.length && tris.every((t) => t.f != null)) {
+                const byF = /* @__PURE__ */ new Map();
+                tris.forEach((t, ti) => {
+                  if (!byF.has(t.f)) byF.set(t.f, []);
+                  byF.get(t.f).push(ti);
+                });
+                for (const m2 of byF.values()) {
+                  const gi = groups.length;
+                  for (const ti of m2) tris[ti].g = gi;
+                  groups.push(m2);
+                }
+              }
+              const order = tris.map((_, i) => i).sort((x, y) => tris[y].ar - tris[x].ar);
+              for (const s of order) {
+                if (tris[s].g >= 0) continue;
+                const gi = groups.length, n0 = tris[s].nu, p0 = V[tris[s].v[0]];
+                const dist = (x) => (x[0] - p0[0]) * n0[0] + (x[1] - p0[1]) * n0[1] + (x[2] - p0[2]) * n0[2];
+                const members = [s];
+                tris[s].g = gi;
+                for (let q = 0; q < members.length; q++) {
+                  const t = tris[members[q]];
+                  for (let k = 0; k < 3; k++) {
+                    const o = tw[3 * members[q] + k], to = tris[o];
+                    if (to.g >= 0) continue;
+                    const d = to.nu[0] * n0[0] + to.nu[1] * n0[1] + to.nu[2] * n0[2];
+                    if (d <= 0 || to.v.some((vi) => Math.abs(dist(V[vi])) > distTol)) continue;
+                    to.g = gi;
+                    members.push(o);
+                  }
+                }
+                groups.push(members);
+              }
+              const gPlane = groups.map((m2) => {
+                const n = [0, 0, 0], c = [0, 0, 0];
+                let A = 0;
+                const vs = /* @__PURE__ */ new Set();
+                for (const ti of m2) {
+                  const t = tris[ti];
+                  for (let k = 0; k < 3; k++) {
+                    n[k] += t.n[k];
+                    for (const vi of t.v) c[k] += V[vi][k] * t.ar / 3;
+                  }
+                  A += t.ar;
+                  t.v.forEach((x) => vs.add(x));
+                }
+                return SNAP.snap(T, n, [c[0] / A, c[1] / A, c[2] / A], [...vs].map((x) => V[x]), { angTol, distTol });
+              });
+              const uf = groups.map((_, i) => i), find = (x) => {
+                while (uf[x] !== x) x = uf[x] = uf[uf[x]];
+                return x;
+              };
+              tris.forEach((t, ti) => {
+                for (let k = 0; k < 3; k++) {
+                  const o = tris[tw[3 * ti + k]];
+                  if (o.g !== t.g && gPlane[o.g].id === gPlane[t.g].id && gPlane[o.g].sign === gPlane[t.g].sign) uf[find(o.g)] = find(t.g);
+                }
+              });
+              const faceOfGroup = /* @__PURE__ */ new Map(), faces = [];
+              groups.forEach((_, gi) => {
+                const r = find(gi);
+                if (!faceOfGroup.has(r)) {
+                  faceOfGroup.set(r, faces.length);
+                  faces.push({ plane: gPlane[r].id, sign: gPlane[r].sign, loops: [], epl: [], nbr: [] });
+                }
+              });
+              const faceOf = (ti) => faceOfGroup.get(find(tris[ti].g));
+              const out = faces.map(() => /* @__PURE__ */ new Map());
+              tris.forEach((t, ti) => {
+                const f = faceOf(ti);
+                for (let k = 0; k < 3; k++) {
+                  const a = t.v[k], b = t.v[(k + 1) % 3], nf = faceOf(tw[3 * ti + k]);
+                  if (nf === f) continue;
+                  const m2 = out[f];
+                  if (!m2.has(a)) m2.set(a, []);
+                  m2.get(a).push({ to: b, nf });
+                }
+              });
+              faces.forEach((F, fi) => {
+                const m2 = out[fi];
+                for (const [start, list] of m2) {
+                  while (list.length) {
+                    const loop = [], nb = [];
+                    let cur = start;
+                    for (let guard = 0; ; guard++) {
+                      const l = m2.get(cur);
+                      if (!l || !l.length) throw new Error("geokernel.fromMesh: contorn obert a la cara " + fi);
+                      const e = l.pop();
+                      loop.push(cur);
+                      nb.push(e.nf);
+                      cur = e.to;
+                      if (cur === start) break;
+                      if (guard > 1e7) throw new Error("geokernel.fromMesh: contorn infinit");
+                    }
+                    F.loops.push(loop);
+                    F.nbr.push(nb);
+                  }
+                }
+              });
+              for (let changed = true; changed; ) {
+                changed = false;
+                const nf = /* @__PURE__ */ new Map();
+                faces.forEach((F, fi) => F.loops.forEach((L) => L.forEach((v) => {
+                  if (!nf.has(v)) nf.set(v, /* @__PURE__ */ new Set());
+                  nf.get(v).add(fi);
+                })));
+                faces.forEach((F, fi) => {
+                  for (let li = 0; li < F.loops.length; li++) {
+                    const L = F.loops[li], N = F.nbr[li];
+                    for (let i = 0; i < L.length && L.length > 3; i++) {
+                      const prev = N[(i + L.length - 1) % L.length];
+                      if (!(prev === N[i] && nf.get(L[i]).size === 2)) continue;
+                      const X = faces[prev], xl = X.loops.findIndex((XL) => XL.length === 3 && XL.includes(L[i]));
+                      let inherit = prev;
+                      if (xl >= 0) {
+                        const XL = X.loops[xl], XN = X.nbr[xl], j = XL.indexOf(L[i]), p = XL[(j + 2) % 3], q = XL[(j + 1) % 3];
+                        const g = XN[(j + 1) % 3];
+                        if (g === prev) continue;
+                        const G = faces[g];
+                        G.loops.forEach((GL, gl) => GL.forEach((w, k) => {
+                          if (w === p && GL[(k + 1) % GL.length] === q && G.nbr[gl][k] === prev) G.nbr[gl][k] = fi;
+                        }));
+                        X.loops.splice(xl, 1);
+                        X.nbr.splice(xl, 1);
+                        inherit = g;
+                      } else if (X.loops.some((XL) => XL.includes(L[i]) && XL.length <= 3)) continue;
+                      N[(i + L.length - 1) % L.length] = inherit;
+                      L.splice(i, 1);
+                      N.splice(i, 1);
+                      changed = true;
+                      i--;
+                    }
+                  }
+                });
+              }
+              const incOf = () => {
+                const m2 = /* @__PURE__ */ new Map();
+                faces.forEach((F) => F.loops.forEach((L) => L.forEach((v) => {
+                  if (!m2.has(v)) m2.set(v, /* @__PURE__ */ new Set());
+                  m2.get(v).add(F.plane);
+                })));
+                return m2;
+              };
+              for (let round = 0; round < 4; round++) {
+                if (opts.concur !== false) {
+                  const cc = CC.concur(T, faces, incOf(), V, { distTol });
+                  for (const F of faces) {
+                    const c = cc.changed.get(F.plane);
+                    if (c) {
+                      F.plane = c.id;
+                      F.sign *= c.sign;
+                    }
+                  }
+                  if (cc.stats.vertices || cc.stats.conflict || cc.stats.rejected) faces.concur = cc.stats;
+                }
+                if (opts.untwist === false) break;
+                const u = UW.untwist(T, faces, incOf(), { maxLen: opts.untwistLen || 50 * distTol });
+                if (!u.merged.size) break;
+                faces.untwist = (faces.untwist || 0) + u.merged.size;
+              }
+              const inc = /* @__PURE__ */ new Map();
+              faces.forEach((F) => F.loops.forEach((L) => L.forEach((v) => {
+                if (!inc.has(v)) inc.set(v, /* @__PURE__ */ new Set());
+                inc.get(v).add(F.plane);
+              })));
+              const verts = [], vid = /* @__PURE__ */ new Map();
+              for (const [v, set] of inc) {
+                const ids = [...set];
+                if (ids.length < 3 && ids.length >= 1) {
+                  const aux = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map((n) => T.fromNormalPoint(n, V[v]).id).filter((id) => !set.has(id));
+                  const pt2 = bestTriple(T, ids.concat(aux), ids);
+                  if (pt2) {
+                    for (const id of ids) pt2.on.add(id);
+                    vid.set(v, verts.length);
+                    verts.push(pt2);
+                    faces.auxVerts = (faces.auxVerts || 0) + 1;
+                    continue;
+                  }
+                }
+                if (ids.length < 3) {
+                  const where = [];
+                  faces.forEach((F, fi) => F.loops.forEach((L) => L.forEach((w, i) => {
+                    if (w === v) where.push("cara " + fi + " (pla " + F.plane + (F.sign > 0 ? "+" : "\u2212") + "): " + L[(i + L.length - 1) % L.length] + "\u2192" + v + "\u2192" + L[(i + 1) % L.length] + " (" + L.length + ")");
+                  })));
+                  throw new Error("geokernel.fromMesh: v\xE8rtex " + v + " amb nom\xE9s " + ids.length + " plans (" + V[v] + ") \xB7 " + where.join(" \xB7 "));
+                }
+                const pt = bestTriple(T, ids);
+                if (!pt) throw new Error("geokernel.fromMesh: els plans del v\xE8rtex " + v + " no es tallen en un punt");
+                for (const id of ids) pt.on.add(id);
+                vid.set(v, verts.length);
+                verts.push(pt);
+              }
+              for (const F of faces) {
+                F.loops = F.loops.map((L) => L.map((v) => vid.get(v)));
+                F.epl = F.nbr.map((N) => N.map((nf) => faces[nf].plane));
+                delete F.nbr;
+              }
+              const R = RG.regularize({ T, faces, verts });
+              if (faces.concur) R.concur = faces.concur;
+              if (faces.untwist) R.untwist = faces.untwist;
+              if (faces.auxVerts) R.auxVerts = faces.auxVerts;
+              return opts.resolveVertices === false ? R : RV.resolveVertices(R);
+            }
+            function bestTriple(T, ids, req) {
+              const n = ids.map((id) => T.normal(id));
+              let best = null, bd = 0;
+              for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) {
+                const a = n[i], b = n[j], c = n[k];
+                const d = Math.abs(a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]));
+                if (req && !req.every((r) => r === ids[i] || r === ids[j] || r === ids[k])) continue;
+                if (d > bd) {
+                  bd = d;
+                  best = [ids[i], ids[j], ids[k]];
+                }
+              }
+              return best ? PT.make(T, best[0], best[1], best[2]) : null;
+            }
+            return { fromMesh, bestTriple };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/outputWeld", [], function() {
+            function weld(P, tol) {
+              const n = P.length / 3, map = new Int32Array(n), out = [], grid = /* @__PURE__ */ new Map();
+              const cell = (x) => Math.floor(x / tol), key = (i, j, k) => Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(k, 83492791) | 0, wc = [];
+              for (let v = 0; v < n; v++) {
+                const x = P[3 * v], y = P[3 * v + 1], z = P[3 * v + 2], ci = cell(x), cj = cell(y), ck = cell(z);
+                let found = -1;
+                for (let a = -1; a <= 1 && found < 0; a++) for (let b = -1; b <= 1 && found < 0; b++) for (let c = -1; c <= 1 && found < 0; c++) {
+                  const I = ci + a, J = cj + b, K = ck + c, l = grid.get(key(I, J, K));
+                  if (!l) continue;
+                  for (const w of l) if (wc[w][0] === I && wc[w][1] === J && wc[w][2] === K && Math.abs(out[3 * w] - x) <= tol && Math.abs(out[3 * w + 1] - y) <= tol && Math.abs(out[3 * w + 2] - z) <= tol) {
+                    found = w;
+                    break;
+                  }
+                }
+                if (found < 0) {
+                  found = out.length / 3;
+                  out.push(x, y, z);
+                  wc.push([ci, cj, ck]);
+                  const k = key(ci, cj, ck);
+                  if (!grid.has(k)) grid.set(k, []);
+                  grid.get(k).push(found);
+                }
+                map[v] = found;
+              }
+              return { positions: Float64Array.from(out), map };
+            }
+            function cleanLoop(L) {
+              let r = L.slice();
+              for (let changed = true; changed && r.length >= 3; ) {
+                changed = false;
+                for (let i = 0; i < r.length && r.length >= 3; i++) {
+                  const n = r.length, prev = r[(i - 1 + n) % n], next = r[(i + 1) % n];
+                  if (r[i] === next) {
+                    r.splice(i, 1);
+                    changed = true;
+                    i--;
+                    continue;
+                  }
+                  if (prev === next) {
+                    r.splice(i, 1);
+                    changed = true;
+                    i--;
+                    continue;
+                  }
+                }
+              }
+              return r;
+            }
+            function conform(P, loops, tol) {
+              const n = P.length / 3, cs0 = Math.max(tol * 64, 1e-12), gk = (i, j, k) => i + "," + j + "," + k, levels = [];
+              let span = 0;
+              for (let i = 0; i < P.length; i++) span = Math.max(span, Math.abs(P[i]));
+              for (let cs = cs0; ; cs *= 4) {
+                const grid = /* @__PURE__ */ new Map(), ci = (x) => Math.floor(x / cs);
+                for (let v = 0; v < n; v++) {
+                  const k = gk(ci(P[3 * v]), ci(P[3 * v + 1]), ci(P[3 * v + 2]));
+                  if (!grid.has(k)) grid.set(k, []);
+                  grid.get(k).push(v);
+                }
+                levels.push({ cs, grid, ci });
+                if (cs > 2 * span + 1) break;
+              }
+              const near = (a, b) => {
+                for (const { grid, ci } of levels) {
+                  const lo = [0, 1, 2].map((k) => ci(Math.min(P[3 * a + k], P[3 * b + k]) - tol)), hi = [0, 1, 2].map((k) => ci(Math.max(P[3 * a + k], P[3 * b + k]) + tol));
+                  if ((hi[0] - lo[0] + 1) * (hi[1] - lo[1] + 1) * (hi[2] - lo[2] + 1) > 27) continue;
+                  const out = [];
+                  for (let i = lo[0]; i <= hi[0]; i++) for (let j = lo[1]; j <= hi[1]; j++) for (let k = lo[2]; k <= hi[2]; k++) {
+                    const l = grid.get(gk(i, j, k));
+                    if (l) out.push(...l);
+                  }
+                  return out;
+                }
+                return null;
+              };
+              return loops.map((L) => {
+                const out = [];
+                for (let i = 0; i < L.length; i++) {
+                  const a = L[i], b = L[(i + 1) % L.length];
+                  out.push(a);
+                  const d = [P[3 * b] - P[3 * a], P[3 * b + 1] - P[3 * a + 1], P[3 * b + 2] - P[3 * a + 2]], L2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+                  if (!(L2 > 0)) continue;
+                  const cand = near(a, b) || Array.from({ length: n }, (_, v) => v), ins = [];
+                  for (const v of cand) {
+                    if (v === a || v === b) continue;
+                    const t = ((P[3 * v] - P[3 * a]) * d[0] + (P[3 * v + 1] - P[3 * a + 1]) * d[1] + (P[3 * v + 2] - P[3 * a + 2]) * d[2]) / L2;
+                    if (t <= 1e-12 || t >= 1 - 1e-12) continue;
+                    const ex = P[3 * a] + t * d[0] - P[3 * v], ey = P[3 * a + 1] + t * d[1] - P[3 * v + 1], ez = P[3 * a + 2] + t * d[2] - P[3 * v + 2];
+                    if (ex * ex + ey * ey + ez * ez <= tol * tol) ins.push([t, v]);
+                  }
+                  ins.sort((x, y) => x[0] - y[0]);
+                  for (const [, v] of ins) out.push(v);
+                }
+                return out;
+              });
+            }
+            function rechain(loops, P2) {
+              const cnt = /* @__PURE__ */ new Map(), ek = (u, v) => u + "," + v;
+              for (const L of loops) for (let i = 0; i < L.length; i++) {
+                const u = L[i], v = L[(i + 1) % L.length];
+                if (u === v) continue;
+                const k = ek(u, v), r = ek(v, u);
+                if ((cnt.get(r) || 0) > 0) cnt.set(r, cnt.get(r) - 1);
+                else cnt.set(k, (cnt.get(k) || 0) + 1);
+              }
+              const out = /* @__PURE__ */ new Map();
+              for (const [k, c] of cnt) {
+                if (c <= 0) continue;
+                const [u, v] = k.split(",").map(Number);
+                for (let i = 0; i < c; i++) {
+                  if (!out.has(u)) out.set(u, []);
+                  out.get(u).push(v);
+                }
+              }
+              const ang = (u, v) => Math.atan2(P2(v)[1] - P2(u)[1], P2(v)[0] - P2(u)[0]);
+              const res = [];
+              for (const [s] of out) {
+                while (out.get(s) && out.get(s).length) {
+                  const L = [];
+                  let prev = null, cur = s, guard = 0;
+                  do {
+                    const l = out.get(cur);
+                    if (!l || !l.length) break;
+                    let j = 0;
+                    if (l.length > 1 && prev != null) {
+                      const back = ang(cur, prev);
+                      let best = Infinity;
+                      l.forEach((v, i) => {
+                        let d = back - ang(cur, v);
+                        while (d <= 0) d += 2 * Math.PI;
+                        while (d > 2 * Math.PI) d -= 2 * Math.PI;
+                        if (d < best) {
+                          best = d;
+                          j = i;
+                        }
+                      });
+                    }
+                    const nx = l.splice(j, 1)[0];
+                    L.push(cur);
+                    prev = cur;
+                    cur = nx;
+                  } while (cur !== s && ++guard < 1e6);
+                  if (L.length >= 3) res.push(L);
+                }
+              }
+              return res;
+            }
+            return { weld, cleanLoop, conform, rechain };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/regularize", ["solids/plane2d/frame", "solids/region2d/evaluate", "solids/region2d/reverse", "solids/boolean/assemble", "solids/plane/through", "solids/point"], function(FR, EV, RV, AS, TH, PT) {
+            function regularize(S) {
+              const T = S.T, byPlane = /* @__PURE__ */ new Map();
+              S.faces.forEach((f) => {
+                if (!byPlane.has(f.plane)) byPlane.set(f.plane, []);
+                byPlane.get(f.plane).push(f);
+              });
+              const irregular = /* @__PURE__ */ new Set();
+              for (const [P, fs] of byPlane) {
+                const signs = new Set(fs.map((f) => f.sign));
+                if (signs.size > 1 || fs.some((f) => f.epl.some((E) => E.includes(P)))) irregular.add(P);
+              }
+              if (!irregular.size) return S;
+              const out = [];
+              for (const [P, fs] of byPlane) {
+                if (!irregular.has(P)) {
+                  for (const f of fs) out.push({ plane: P, sign: f.sign, loops: f.loops.map((L, li) => ({ pts: L.map((v) => S.verts[v]), X: f.epl[li].slice() })) });
+                  continue;
+                }
+                const F = FR.frame(T, P), ops = [[], []];
+                for (const f of fs) {
+                  f.loops.forEach((L, li) => {
+                    for (let i = 0; i < L.length; i++) {
+                      let a = S.verts[L[i]], b = S.verts[L[(i + 1) % L.length]];
+                      if (PT.equal(a, b)) continue;
+                      if (f.sign < 0) {
+                        const t = a;
+                        a = b;
+                        b = t;
+                      }
+                      let X = f.epl[li][i];
+                      if (X === P) X = TH.throughPointsDir(T, a, b, P).id;
+                      ops[f.sign > 0 ? 0 : 1].push({ a, b, X, s: F.sense(X, a, b) });
+                    }
+                  });
+                }
+                const [plus, minus] = EV.evaluate(T, F, ops, [(w) => w[0] > 0 && !(w[1] > 0), (w) => w[1] > 0 && !(w[0] > 0)]);
+                if (plus.length) out.push({ plane: P, sign: 1, loops: plus });
+                if (minus.length) out.push({ plane: P, sign: -1, loops: minus.map(RV.reverseLoop) });
+              }
+              const R = AS.assemble(T, out);
+              R.stats = { regularized: irregular.size };
+              return R;
+            }
+            return { regularize };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/resolveVertices", ["solids/point"], function(PT) {
+            const sgn = (x) => x > 0n ? 1 : x < 0n ? -1 : 0;
+            function resolveVertices(S) {
+              const T = S.T, stats = { vertices: 0, saddle: 0, aborted: 0 };
+              const inc = /* @__PURE__ */ new Map();
+              S.faces.forEach((f, fi) => f.loops.forEach((L, li) => L.forEach((v, i) => {
+                if (!inc.has(v)) inc.set(v, []);
+                inc.get(v).push({ fi, li, i });
+              })));
+              const repl = /* @__PURE__ */ new Map();
+              for (const [v, occ] of inc) {
+                if (occ.length < 4) continue;
+                const planes = occ.map((o) => S.faces[o.fi].plane);
+                if (new Set(planes).size !== planes.length) continue;
+                const signOf = new Map(occ.map((o) => [S.faces[o.fi].plane, S.faces[o.fi].sign]));
+                const V = S.verts[v], free = (p) => Object.assign({}, p, { on: /* @__PURE__ */ new Set() });
+                if (planes.every((pl) => PT.side(T, pl, free(V)) === 0)) continue;
+                let neg = false, pos = false;
+                for (const o of occ) {
+                  const L = S.faces[o.fi].loops[o.li], n = L.length;
+                  for (const u of [L[(o.i - 1 + n) % n], L[(o.i + 1) % n]]) for (const pl of planes) {
+                    const s = signOf.get(pl) * PT.side(T, pl, S.verts[u]);
+                    if (s < 0) neg = true;
+                    if (s > 0) pos = true;
+                  }
+                }
+                if (neg && pos) {
+                  stats.saddle++;
+                  continue;
+                }
+                const sigma = pos ? -1 : 1;
+                const res = [];
+                let ok = true;
+                for (const o of occ) {
+                  const r = walk(T, S, o, planes, signOf, sigma);
+                  if (!r) {
+                    ok = false;
+                    break;
+                  }
+                  res.push({ o, r });
+                }
+                if (ok) {
+                  const E = /* @__PURE__ */ new Set();
+                  for (const { o, r } of res) for (let k = 0; k + 1 < r.pts.length; k++) E.add(S.faces[o.fi].plane + "|" + r.pl[k] + "|" + PT.key(r.pts[k]) + "|" + PT.key(r.pts[k + 1]));
+                  for (const { o, r } of res) for (let k = 0; k + 1 < r.pts.length; k++) if (!E.has(r.pl[k] + "|" + S.faces[o.fi].plane + "|" + PT.key(r.pts[k + 1]) + "|" + PT.key(r.pts[k]))) ok = false;
+                  const endIn = /* @__PURE__ */ new Map(), endOut = /* @__PURE__ */ new Map();
+                  for (const { o, r } of res) {
+                    const p = S.faces[o.fi].plane;
+                    endIn.set(p + "|" + r.ep, PT.key(r.pts[0]));
+                    endOut.set(p + "|" + r.en, PT.key(r.pts[r.pts.length - 1]));
+                  }
+                  for (const { o, r } of res) {
+                    const p = S.faces[o.fi].plane;
+                    if (endOut.get(r.ep + "|" + p) !== endIn.get(p + "|" + r.ep)) ok = false;
+                  }
+                }
+                if (!ok) {
+                  stats.aborted++;
+                  continue;
+                }
+                stats.vertices++;
+                for (const { o, r } of res) repl.set(o.fi + "," + o.li + "," + o.i, r);
+              }
+              if (!repl.size) {
+                S.resolved = stats;
+                return S;
+              }
+              const vid = /* @__PURE__ */ new Map();
+              const idOf = (p) => {
+                const k = PT.key(p);
+                let id = vid.get(k);
+                if (id == null) {
+                  id = S.verts.length;
+                  S.verts.push(p);
+                  vid.set(k, id);
+                }
+                return id;
+              };
+              S.faces.forEach((f, fi) => {
+                f.loops = f.loops.map((L, li) => {
+                  const nl = [], ne = [];
+                  L.forEach((v, i) => {
+                    const r = repl.get(fi + "," + li + "," + i);
+                    if (!r) {
+                      nl.push(v);
+                      ne.push(f.epl[li][i]);
+                      return;
+                    }
+                    r.pts.forEach((p, k) => {
+                      nl.push(idOf(p));
+                      ne.push(k + 1 < r.pts.length ? r.pl[k] : f.epl[li][i]);
+                    });
+                  });
+                  f.epl[li] = ne;
+                  return nl;
+                });
+                delete f._corners;
+              });
+              S.resolved = stats;
+              return S;
+            }
+            function walk(T, S, o, planes, signOf, sigma) {
+              const f = S.faces[o.fi], L = f.loops[o.li], E = f.epl[o.li], n = L.length;
+              const ep = E[(o.i - 1 + n) % n], en = E[o.i], P = f.plane, nrm = (id) => {
+                const p = T.get(id);
+                return [p.a, p.b, p.c];
+              };
+              const cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+              const dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+              const cmpT = (D2, p, q) => sgn(dt(D2, p.h) * q.h[3] - dt(D2, q.h) * p.h[3]);
+              let X = ep, D = cr(nrm(P), nrm(X));
+              let cur = S.verts[L[(o.i - 1 + n) % n]];
+              const s0 = cmpT(D, S.verts[L[o.i]], cur);
+              if (!s0) return null;
+              let s = s0;
+              const pts = [], pl = [];
+              for (let step = 0; step <= planes.length; step++) {
+                let best = null, ties = [];
+                for (const j of planes) {
+                  if (j === P || j === X) continue;
+                  const nd = dt(nrm(j), D);
+                  if (nd === 0n) continue;
+                  if (sigma * signOf.get(j) * s * sgn(nd) <= 0) continue;
+                  const q = PT.make(T, P, X, j);
+                  if (!q) continue;
+                  if (s * cmpT(D, q, cur) <= 0) continue;
+                  if (!best) {
+                    best = { j, q };
+                    ties = [];
+                    continue;
+                  }
+                  const c = s * cmpT(D, q, best.q);
+                  if (c < 0) {
+                    best = { j, q };
+                    ties = [];
+                  } else if (c === 0) ties.push(j);
+                }
+                if (!best || ties.length) return null;
+                pts.push(best.q);
+                if (best.j === en) return { pts, pl, ep, en };
+                pl.push(best.j);
+                const D2 = cr(nrm(P), nrm(best.j)), nx = dt(nrm(X), D2);
+                if (nx === 0n) return null;
+                const s2 = -sigma * signOf.get(X) * sgn(nx);
+                X = best.j;
+                D = D2;
+                s = s2;
+                cur = best.q;
+              }
+              return null;
+            }
+            return { resolveVertices };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/toMesh", ["solids/point", "2d/triangulate/region", "solids/brep/outputWeld", "2d/triangulate/untangle", "2d/triangulate/flipSlivers"], function(PT, TRI, OW, UT, FS) {
+            function toMesh(S, opts) {
+              const T = S.T;
+              const raw = new Float64Array(S.verts.length * 3);
+              let span = 0;
+              S.verts.forEach((v, i) => {
+                const c = PT.coords(T, v);
+                raw[3 * i] = c[0];
+                raw[3 * i + 1] = c[1];
+                raw[3 * i + 2] = c[2];
+                span = Math.max(span, Math.abs(c[0]), Math.abs(c[1]), Math.abs(c[2]));
+              });
+              const tol = opts && opts.weld || 1e-9 * (span + 1);
+              const W = OW.weld(raw, tol), pos = W.positions;
+              const flat = [], owner = [];
+              S.faces.forEach((F, fi) => F.loops.forEach((L) => {
+                flat.push(OW.cleanLoop(L.map((v) => W.map[v])));
+                owner.push(fi);
+              }));
+              const conf = OW.conform(pos, flat, tol).map(OW.cleanLoop);
+              const idx = [], faceOf = [];
+              S.faces.forEach((F, fi) => {
+                const n = T.normal(F.plane, F.sign);
+                let k = 0;
+                if (Math.abs(n[1]) > Math.abs(n[k])) k = 1;
+                if (Math.abs(n[2]) > Math.abs(n[k])) k = 2;
+                let a = (k + 1) % 3, b = (k + 2) % 3;
+                if (n[k] < 0) {
+                  const t = a;
+                  a = b;
+                  b = t;
+                }
+                const p2 = (v) => [pos[3 * v + a], pos[3 * v + b]];
+                const own = conf.filter((_, i) => owner[i] === fi).filter((L) => L.length >= 3);
+                const P2 = [];
+                for (const L of own) for (const v of L) P2[v] = p2(v);
+                const loops = UT.untangle(P2, OW.rechain(own, p2), 0);
+                if (!loops.length) return;
+                const ids = [].concat(...loops);
+                let r;
+                try {
+                  r = TRI.triangulateRegion(loops.map((L) => L.map(p2)), { keepCollinear: true });
+                } catch (e) {
+                  e.message = "geokernel.toMesh: no es pot triangular la cara " + fi + " (pla " + F.plane + "): " + e.message;
+                  throw e;
+                }
+                const tris = opts && opts.flipSlivers === false ? r.tris : FS.flipSlivers(r.pts, r.tris).tris;
+                for (const t of tris) {
+                  idx.push(ids[t[0]], ids[t[1]], ids[t[2]]);
+                  faceOf.push(fi);
+                }
+              });
+              return { positions: pos, indices: Uint32Array.from(idx), faceOf: Int32Array.from(faceOf) };
+            }
+            return { toMesh };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/twins", [], function() {
+            function twins(V, tris) {
+              const tw = new Int32Array(tris.length * 3).fill(-1), ed = /* @__PURE__ */ new Map();
+              tris.forEach((t, ti) => {
+                for (let k = 0; k < 3; k++) {
+                  const a = t.v[k], b = t.v[(k + 1) % 3], key = a < b ? a + "," + b : b + "," + a;
+                  if (!ed.has(key)) ed.set(key, []);
+                  ed.get(key).push({ ti, k, fwd: a < b });
+                }
+              });
+              for (const [key, l] of ed) {
+                const nf = l.filter((x2) => x2.fwd).length;
+                if (nf * 2 !== l.length) throw new Error((nf === l.length || nf === 0) && l.length === 1 ? "geokernel.fromMesh: malla oberta (aresta nua " + key + ")" : "geokernel.fromMesh: aresta " + key + " amb " + nf + " triangles en un sentit i " + (l.length - nf) + " en l'altre (oberta o mal orientada)");
+                if (l.length === 2) {
+                  tw[3 * l[0].ti + l[0].k] = l[1].ti;
+                  tw[3 * l[1].ti + l[1].k] = l[0].ti;
+                  continue;
+                }
+                const [u, w] = key.split(",").map(Number), U = V[u], d = [V[w][0] - U[0], V[w][1] - U[1], V[w][2] - U[2]];
+                const dl = Math.hypot(...d);
+                d[0] /= dl;
+                d[1] /= dl;
+                d[2] /= dl;
+                const e1 = Math.abs(d[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+                const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+                const x = cross(cross(d, e1), d), xl = Math.hypot(...x);
+                x[0] /= xl;
+                x[1] /= xl;
+                x[2] /= xl;
+                const y = cross(d, x);
+                for (const it of l) {
+                  const t = tris[it.ti].v, c = t[(it.k + 2) % 3], r = [V[c][0] - U[0], V[c][1] - U[1], V[c][2] - U[2]];
+                  it.ang = Math.atan2(dot(r, y), dot(r, x));
+                }
+                l.sort((p, q) => p.ang - q.ang);
+                for (let i = 0; i < l.length; i++) {
+                  if (!l[i].fwd) continue;
+                  const j = (i - 1 + l.length) % l.length;
+                  if (l[j].fwd) throw new Error("geokernel.fromMesh: aresta no-manifold " + key + " sense alternan\xE7a de sentits (s\xF2lids encreuats?)");
+                  tw[3 * l[i].ti + l[i].k] = l[j].ti;
+                  tw[3 * l[j].ti + l[j].k] = l[i].ti;
+                }
+              }
+              return tw;
+            }
+            return { twins };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/brep/untwist", ["solids/point"], function(PT) {
+            function bestPoint(T, ids) {
+              const n = ids.map((id) => T.normal(id));
+              let best = null, bd = 0;
+              for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) for (let k = j + 1; k < ids.length; k++) {
+                const a = n[i], b = n[j], c = n[k];
+                const d = Math.abs(a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]));
+                if (d > bd) {
+                  bd = d;
+                  best = [ids[i], ids[j], ids[k]];
+                }
+              }
+              return best && PT.make(T, best[0], best[1], best[2]);
+            }
+            const orient = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+            function crosses(a, b, c, d) {
+              const d1 = orient(a, b, c), d2 = orient(a, b, d), d3 = orient(c, d, a), d4 = orient(c, d, b);
+              return (d1 > 0 && d2 < 0 || d1 < 0 && d2 > 0) && (d3 > 0 && d4 < 0 || d3 < 0 && d4 > 0);
+            }
+            function untwist(T, faces, inc, opts) {
+              const maxLen = opts.maxLen, stats = { checked: 0, twisted: 0, collapsed: 0, skipped: 0 };
+              const pos = /* @__PURE__ */ new Map(), at = (v) => {
+                let p = pos.get(v);
+                if (p === void 0) {
+                  const q = bestPoint(T, [...inc.get(v)]);
+                  p = q ? PT.coords(T, q) : null;
+                  pos.set(v, p);
+                }
+                return p;
+              };
+              const merged = /* @__PURE__ */ new Map();
+              for (const F of faces) {
+                const n = T.normal(F.plane);
+                let k = 0;
+                if (Math.abs(n[1]) > Math.abs(n[k])) k = 1;
+                if (Math.abs(n[2]) > Math.abs(n[k])) k = 2;
+                const a2 = (k + 1) % 3, b2 = (k + 2) % 3;
+                for (const L of F.loops) {
+                  const m2 = L.length;
+                  if (m2 < 4) continue;
+                  stats.checked++;
+                  const P2 = L.map((v) => {
+                    const p = at(v);
+                    return p && [p[a2], p[b2]];
+                  });
+                  if (P2.some((p) => !p)) continue;
+                  for (let i = 0; i < m2; i++) {
+                    const i1 = (i + 1) % m2, i2 = (i + 2) % m2, i3 = (i + 3) % m2;
+                    if (!crosses(P2[i], P2[i1], P2[i2], P2[i3])) continue;
+                    stats.twisted++;
+                    const x = L[i1], y = L[i2], px = at(x), py = at(y);
+                    const len = Math.hypot(px[0] - py[0], px[1] - py[1], px[2] - py[2]);
+                    if (len > maxLen) {
+                      stats.skipped++;
+                      continue;
+                    }
+                    if (!merged.has(y) && !merged.has(x)) merged.set(y, x);
+                  }
+                }
+              }
+              if (!merged.size) return { merged, stats };
+              const rep = (v) => merged.get(v) ?? v;
+              for (const F of faces) for (const L of F.loops) {
+                const r = [];
+                for (const v of L) {
+                  const w = rep(v);
+                  if (r[r.length - 1] !== w) r.push(w);
+                }
+                if (r.length > 1 && r[0] === r[r.length - 1]) r.pop();
+                if (r.length < 3) {
+                  for (const v of L) if (merged.has(v)) {
+                    merged.delete(v);
+                    stats.skipped++;
+                  }
+                }
+              }
+              for (const F of faces) for (let li = 0; li < F.loops.length; li++) {
+                const L = F.loops[li], N = F.nbr[li], R = [], RN = [];
+                for (let i = 0; i < L.length; i++) {
+                  const w = rep(L[i]);
+                  if (R.length && R[R.length - 1] === w) {
+                    RN[RN.length - 1] = N[i];
+                    continue;
+                  }
+                  R.push(w);
+                  RN.push(N[i]);
+                }
+                if (R.length > 1 && R[0] === R[R.length - 1]) {
+                  R.pop();
+                  RN.pop();
+                }
+                F.loops[li] = R;
+                F.nbr[li] = RN;
+              }
+              stats.collapsed = merged.size;
+              return { merged, stats };
+            }
+            return { untwist };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/apex", ["solids/point", "solids/brep/corners", "solids/diag/draw"], function(PT, CO, DR) {
+            const FC = ["#4da3ff", "#ffa040", "#40d080", "#ff5070", "#c080ff", "#ffe040", "#40e0e0"];
+            const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+            const unit = (a) => {
+              const l = Math.hypot(...a) || 1;
+              return [a[0] / l, a[1] / l, a[2] / l];
+            };
+            const sci = (x) => {
+              if (x === 0) return "0";
+              const e = Math.floor(Math.log10(Math.abs(x))), m2 = x / Math.pow(10, e);
+              return (m2 >= 0 ? "+" : "") + m2.toFixed(1).replace(".", ",") + "\xB710^" + e;
+            };
+            function arrow(a, b, head) {
+              const d = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(d[0], d[1]) || 1, u = [d[0] / l, d[1] / l], m2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], h = Math.min(head, 0.3 * l);
+              return [[m2[0], m2[1], 0, m2[0] - h * (u[0] - 0.5 * u[1]), m2[1] - h * (u[1] + 0.5 * u[0]), 0], [m2[0], m2[1], 0, m2[0] - h * (u[0] + 0.5 * u[1]), m2[1] - h * (u[1] - 0.5 * u[0]), 0]];
+            }
+            function apexScene(o) {
+              const S = o.A, T = S.T, P = o.P, nP = T.normal(P), pp = T.get(P), dP = pp.fe / (Math.hypot(pp.fa, pp.fb, pp.fc) * Math.pow(2, T.gridExp));
+              const dist = (c) => dot(nP, c) + dP;
+              const inc = (vi2) => S.faces.filter((f) => f.loops.some((L2) => L2.includes(vi2)));
+              let vi = o.vi;
+              if (vi == null) {
+                let best = Infinity;
+                S.verts.forEach((v, i) => {
+                  if (inc(i).length < 4) return;
+                  const d = Math.abs(dist(PT.coords(T, v)));
+                  if (d < best) {
+                    best = d;
+                    vi = i;
+                  }
+                });
+              }
+              if (vi == null) throw new Error("geokernel.diag.apex: el s\xF2lid no t\xE9 cap v\xE8rtex de 4 plans o m\xE9s");
+              const V0 = PT.coords(T, S.verts[vi]);
+              const faces = [], lines = /* @__PURE__ */ new Map();
+              inc(vi).forEach((f) => {
+                f.loops.forEach((L2, li) => {
+                  const i = L2.indexOf(vi);
+                  if (i < 0) return;
+                  const c = CO.corners(S, f)[li][i], E = f.epl[li], n = L2.length, ep = E[(i - 1 + n) % n], en = E[i], q = PT.coords(T, c);
+                  faces.push({ plane: f.plane, ep, en, q, d: dist(q), side: PT.side(T, P, Object.assign({}, c, { on: /* @__PURE__ */ new Set() })) });
+                  for (const X of [ep, en]) {
+                    const k = Math.min(f.plane, X) + "," + Math.max(f.plane, X);
+                    if (!lines.has(k)) lines.set(k, { at: q, dir: unit(cross(T.normal(f.plane), T.normal(X))) });
+                  }
+                });
+              });
+              const col = /* @__PURE__ */ new Map();
+              faces.forEach((f, i) => col.set(f.plane, FC[i % FC.length]));
+              const a0 = unit(Math.abs(nP[0]) < 0.9 ? cross(nP, [1, 0, 0]) : cross(nP, [0, 1, 0])), b0 = cross(nP, a0);
+              let u = a0, spread = -1;
+              for (let k = 0; k < 90; k++) {
+                const t = Math.PI * k / 90, w2 = [0, 1, 2].map((j) => Math.cos(t) * a0[j] + Math.sin(t) * b0[j]);
+                const xs = faces.map((f) => dot(w2, sub(f.q, V0))), s = Math.max(...xs) - Math.min(...xs);
+                if (s > spread) {
+                  spread = s;
+                  u = w2;
+                }
+              }
+              const w = cross(nP, u);
+              const ext = Math.max(spread, ...faces.map((f) => Math.abs(f.d)), 1e-300);
+              const K = Math.pow(10, Math.round(Math.log10(10 / ext)));
+              const shapes = [];
+              const el = (c) => [K * dot(u, sub(c, V0)), K * dist(c), 0];
+              const Y = 1.8 * Math.max(...faces.map((f) => Math.abs(K * f.d)), 1);
+              let xmin = Infinity, xmax = -Infinity;
+              const lsegs = [];
+              for (const [, ln] of lines) {
+                const r = dot(nP, ln.dir);
+                if (Math.abs(r) < 1e-12) continue;
+                const p0 = el(ln.at), t1 = (Y - p0[1]) / (K * r), t2 = (-Y - p0[1]) / (K * r);
+                const A1 = [p0[0] + K * dot(u, ln.dir) * t1, Y, 0], A2 = [p0[0] + K * dot(u, ln.dir) * t2, -Y, 0];
+                lsegs.push(A1.concat(A2));
+                xmin = Math.min(xmin, A1[0], A2[0]);
+                xmax = Math.max(xmax, A1[0], A2[0]);
+              }
+              shapes.push({ id: "rectes", type: "segments", segs: lsegs, color: "#6b7484" });
+              const pad = 0.15 * (xmax - xmin || 1);
+              shapes.push({ id: "P", type: "segments", segs: [[xmin - pad, 0, 0, xmax + pad, 0, 0]], color: "#3dd6ff" });
+              shapes.push({ id: "P", type: "label", p: [xmax + pad, 0, 0], text: "pla de tall P", color: "#3dd6ff" });
+              const R = 0.025 * (xmax - xmin + 2 * Y);
+              const items = [];
+              faces.forEach((f, i) => {
+                const p = el(f.q);
+                shapes.push({ id: "c" + f.plane, type: "point", p, color: col.get(f.plane) });
+                shapes.push(...DR.ring("c" + f.plane, p, R * (1 + 0.35 * i), col.get(f.plane), true));
+                items.push({ id: "c" + f.plane, at: p, text: "cara " + f.plane + ": el seu \xE0pex a " + sci(f.d) + " m (" + (f.side > 0 ? "per sobre" : f.side < 0 ? "per sota" : "sobre") + " de P)", color: col.get(f.plane) });
+              });
+              shapes.push(...DR.callouts2d(items, [xmin - pad, -Y, xmax + pad, Y], "left"));
+              shapes.push({ id: "tit", type: "label", p: [xmin, Y * 1.25, 0], text: "AL\xC7AT \xD7" + K.toExponential(0) + " (1 unitat = " + (1 / K).toExponential(0) + " m)", color: "#e6e9ef" });
+              let unbalanced = 0;
+              const ops = o.diag ? o.diag.operands : null, L = ops ? ops[4] && ops[4].length ? ops[4] : ops[5] || [] : [];
+              if (L.length) {
+                const pl = (c) => [K * dot(u, sub(c, V0)), K * dot(w, sub(c, V0)), 0];
+                const pts = L.flatMap((e) => [pl(PT.coords(T, e.a)), pl(PT.coords(T, e.b))]);
+                const lo = [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1]))], hi = [Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+                const off = [xmax + pad + 0.6 * (xmax - xmin + 2 * pad) - lo[0], -(lo[1] + hi[1]) / 2];
+                const at = (c) => {
+                  const p = pl(c);
+                  return [p[0] + off[0], p[1] + off[1], 0];
+                };
+                const span = Math.max(hi[0] - lo[0], hi[1] - lo[1]) || 1, bal = /* @__PURE__ */ new Map(), its = [];
+                L.forEach((e) => {
+                  const a = at(PT.coords(T, e.a)), b = at(PT.coords(T, e.b));
+                  shapes.push({ id: "s" + e.X, type: "segments", segs: [a.concat(b), ...arrow(a, b, span * 0.12)], color: col.get(e.X) || "#cccccc" });
+                  its.push({ id: "s" + e.X, at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0], text: "tall de la cara " + e.X, color: col.get(e.X) || "#cccccc" });
+                  for (const [k, p, s] of [[PT.key(e.a), a, 1], [PT.key(e.b), b, -1]]) {
+                    const v = bal.get(k) || { n: 0, p };
+                    v.n += s;
+                    bal.set(k, v);
+                  }
+                });
+                const bad = [];
+                for (const [, v] of bal) if (v.n) {
+                  unbalanced++;
+                  shapes.push(...DR.ring("nt" + unbalanced, v.p, span * 0.06, "#ff2020", true));
+                  bad.push({ id: "nt" + unbalanced, at: v.p, text: v.n > 0 ? "en surten " + v.n + ", no n'hi entra cap" : "n'hi entren " + -v.n + ", no en surt cap", color: "#ff2020" });
+                }
+                const box = [lo[0] + off[0], lo[1] + off[1], hi[0] + off[0], hi[1] + off[1]];
+                shapes.push(...DR.callouts2d(bad, box, "right"));
+                shapes.push(...DR.callouts2d(its, [box[0], box[1] - span * 0.5, box[2], box[3] + span * 0.5], "left").map((s) => Object.assign(s, { id: s.id + "l" })));
+                shapes.push({ id: "tit2", type: "label", p: [box[0], Math.max(box[3] + span * 0.8, Y * 1.25), 0], text: "SECCI\xD3 A P, EN PLANTA \xD7" + K.toExponential(0) + ": " + (unbalanced ? unbalanced + " nodes no tanquen" : "tanca"), color: "#e6e9ef" });
+              }
+              return { shapes, K, vi, faces: faces.map((f) => ({ plane: f.plane, d: f.d, side: f.side })), unbalanced };
+            }
+            return { apexScene };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/chain", ["solids/plane", "solids/repair", "solids/brep/fromMesh", "solids/boolean"], function(PL, RP, FM, BO) {
+            function runChain(pc, opts) {
+              opts = opts || {};
+              const tol = opts.tol || 1e-4, o = { distTol: tol }, T = PL.table({});
+              const res = { T, X: null, B: null, Bmesh: null, step: -1, op: null, error: null, diag: null, steps: pc.ops.length };
+              try {
+                res.X = FM.fromMesh(T, RP.repair(pc.base, { tol }), o);
+              } catch (e) {
+                res.error = "base: " + e.message;
+                return res;
+              }
+              const upto = opts.upto != null ? Math.min(opts.upto, pc.ops.length) : pc.ops.length;
+              for (let i = 0; i < upto; i++) {
+                res.step = i;
+                res.op = pc.ops[i].op;
+                res.Bmesh = RP.repair(pc.ops[i].B, { tol });
+                try {
+                  res.B = FM.fromMesh(T, res.Bmesh, o);
+                } catch (e) {
+                  res.error = "operand " + i + ": " + e.message;
+                  return res;
+                }
+                if (i === upto - 1 && opts.upto != null) return res;
+                try {
+                  res.X = BO.boolean(pc.ops[i].op, res.X, res.B);
+                } catch (e) {
+                  res.error = "pas " + i + " (" + pc.ops[i].op + "): " + e.message;
+                  res.diag = e.diag || null;
+                  return res;
+                }
+              }
+              res.step = upto;
+              res.B = null;
+              res.Bmesh = null;
+              return res;
+            }
+            return { runChain };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/draw", [], function() {
+            function flatMesh(id, positions, indices, color, opacity, edgeColor) {
+              const P = positions, I = indices, pos = [], segs = [], ed = /* @__PURE__ */ new Map();
+              const nrm = (a, b, c) => {
+                const u = [P[3 * b] - P[3 * a], P[3 * b + 1] - P[3 * a + 1], P[3 * b + 2] - P[3 * a + 2]], v = [P[3 * c] - P[3 * a], P[3 * c + 1] - P[3 * a + 1], P[3 * c + 2] - P[3 * a + 2]];
+                const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]], l = Math.hypot(...n) || 1;
+                return [n[0] / l, n[1] / l, n[2] / l];
+              };
+              for (let t = 0; t < I.length; t += 3) {
+                const tri = [I[t], I[t + 1], I[t + 2]];
+                for (const v of tri) pos.push(P[3 * v], P[3 * v + 1], P[3 * v + 2]);
+                const n = nrm(tri[0], tri[1], tri[2]);
+                for (let k = 0; k < 3; k++) {
+                  const a = tri[k], b = tri[(k + 1) % 3], key = a < b ? a + "," + b : b + "," + a;
+                  if (!ed.has(key)) ed.set(key, { a, b, n: [] });
+                  ed.get(key).n.push(n);
+                }
+              }
+              for (const e of ed.values()) {
+                const sharp = e.n.length !== 2 || e.n[0][0] * e.n[1][0] + e.n[0][1] * e.n[1][1] + e.n[0][2] * e.n[1][2] < 0.99985;
+                if (sharp) segs.push([P[3 * e.a], P[3 * e.a + 1], P[3 * e.a + 2], P[3 * e.b], P[3 * e.b + 1], P[3 * e.b + 2]]);
+              }
+              const out = [{ id, type: "mesh", positions: pos, color, opacity }];
+              if (segs.length) out.push({ id, type: "segments", segs, color: edgeColor || "#1b1f27" });
+              return out;
+            }
+            function ring(id, c, r, color, flat) {
+              const N = 40, circle = (ax, ay) => {
+                const pts = [];
+                for (let i = 0; i < N; i++) {
+                  const t = 2 * Math.PI * i / N;
+                  pts.push([0, 1, 2].map((k) => c[k] + r * (Math.cos(t) * ax[k] + Math.sin(t) * ay[k])));
+                }
+                return { id, type: "poly", pts, closed: true, color };
+              };
+              if (flat) return [circle([1, 0, 0], [0, 1, 0])];
+              return [circle([1, 0, 0], [0, 1, 0]), circle([0, 1, 0], [0, 0, 1]), circle([1, 0, 0], [0, 0, 1])];
+            }
+            function callouts2d(items, box, side) {
+              if (!items.length) return [];
+              const w = box[2] - box[0], h = box[3] - box[1], gap = Math.max(w, h) * 0.08 || 1;
+              const x = side === "left" ? box[0] - gap : box[2] + gap;
+              const sorted = items.slice().sort((p, q) => q.at[1] - p.at[1]);
+              const out = [];
+              sorted.forEach((it, i) => {
+                const y = sorted.length === 1 ? it.at[1] : box[3] - h * i / (sorted.length - 1);
+                const p = [x, y, 0];
+                out.push({ id: it.id, type: "segments", segs: [it.at.concat(p)], color: it.color, dash: [gap * 0.06, gap * 0.04] });
+                out.push({ id: it.id, type: "label", p, text: it.text, color: it.color });
+              });
+              return out;
+            }
+            function callouts3d(items, lo, hi) {
+              const c = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2), diag = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) || 1, out = [];
+              items.forEach((it, i) => {
+                let d = [0, 1, 2].map((k) => it.at[k] - c[k]);
+                let l = Math.hypot(...d);
+                if (!(l > 1e-9)) {
+                  d = [1, 0, 0];
+                  l = 1;
+                }
+                const p = [0, 1, 2].map((k) => c[k] + d[k] / l * diag * (0.65 + 0.04 * (i % 4)));
+                out.push({ id: it.id, type: "segments", segs: [it.at.concat(p)], color: it.color, dash: [diag * 0.01, diag * 7e-3] });
+                out.push({ id: it.id, type: "label", p, text: it.text, color: it.color });
+              });
+              return out;
+            }
+            return { flatMesh, ring, callouts2d, callouts3d };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/ifcScene", ["formats/mctx", "solids/validate/mesh", "solids/diag/draw"], function(MX, VM, DR) {
+            const GREEN = "#58c87a", RED = "#ff4d4d", GREY = "#b9c0cc";
+            const zUp = (P) => {
+              const o = new Float64Array(P.length);
+              for (let i = 0; i < P.length; i += 3) {
+                o[i] = P[i];
+                o[i + 1] = -P[i + 2];
+                o[i + 2] = P[i + 1];
+              }
+              return o;
+            };
+            function ifcScenes(o) {
+              const ctx = o.ctx, index = o.index, chains = o.chains || {}, results = o.results || {};
+              const byEid = /* @__PURE__ */ new Map();
+              ctx.pieces.forEach((p) => {
+                if (!byEid.has(p.expressID)) byEid.set(p.expressID, []);
+                byEid.get(p.expressID).push(p);
+              });
+              const left = [], right = [], rows = [];
+              const flatPos = (P, I) => {
+                const o2 = new Float32Array(I.length * 3);
+                for (let i = 0; i < I.length; i++) {
+                  o2[3 * i] = P[3 * I[i]];
+                  o2[3 * i + 1] = P[3 * I[i] + 1];
+                  o2[3 * i + 2] = P[3 * I[i] + 2];
+                }
+                return o2;
+              };
+              const meshOf = (id, P, I, color) => DR.flatMesh(id, Array.from(P), Array.from(I), color, 1, "#2a2f38");
+              const ctxShapes = (eid, color) => (byEid.get(eid) || []).flatMap((p, k) => meshOf("e" + eid + "_" + k, zUp(MX.toModel(p.positions, p.matrix)), p.indices, color));
+              const cP = [], cI = [];
+              for (const el of index.elements || []) {
+                if (el.hasBooleans && chains[el.expressID]) continue;
+                for (const p of byEid.get(el.expressID) || []) {
+                  const P = zUp(MX.toModel(p.positions, p.matrix)), base = cP.length / 3;
+                  for (let i = 0; i < P.length; i++) cP.push(P[i]);
+                  for (let i = 0; i < p.indices.length; i++) cI.push(p.indices[i] + base);
+                }
+              }
+              if (cI.length) {
+                const s = cI.length / 3 > 2e5 ? [{ id: "context", type: "mesh", positions: flatPos(cP, cI), color: GREY, opacity: 1 }] : meshOf("context", cP, cI, GREY);
+                left.push(...s);
+                right.push(...s);
+              }
+              for (const el of index.elements || []) {
+                const eid = el.expressID, ch = chains[eid];
+                if (!el.hasBooleans || !ch) continue;
+                let wNaked = 0, ops = 0;
+                for (const pc of ch.pieces) {
+                  ops += pc.nOps != null ? pc.nOps : pc.ops.length;
+                  wNaked += pc.webifcNaked != null ? pc.webifcNaked : pc.webifcFinal ? VM.check(pc.webifcFinal).naked : 0;
+                }
+                left.push(...ctxShapes(eid, wNaked ? RED : GREEN));
+                const res = results[eid] || [], mineOk = res.length === ch.pieces.length && res.every((r) => r && r.ok);
+                const placed = ch.pieces.every((pc, k) => pc.toModel || !(res[k] && res[k].positions && res[k].positions.length));
+                if (mineOk && !placed) {
+                  right.push(...ctxShapes(eid, "#ffb020"));
+                  rows.push({ eid, type: el.type, pieces: ch.pieces.length, ops: ch.pieces.reduce((a, pc) => a + (pc.nOps != null ? pc.nOps : pc.ops.length), 0), webifcNaked: wNaked, webifcOk: !wNaked, mine: "tanca, per\xF2 sense col\xB7locaci\xF3 (web-ifc buit)", mineOk: true });
+                  continue;
+                }
+                if (mineOk) res.forEach((r, k) => r.positions.length && right.push(...meshOf("e" + eid + "_m" + k, zUp(MX.toModel(r.positions, ch.pieces[k].toModel)), r.indices, GREEN)));
+                else right.push(...ctxShapes(eid, RED));
+                const bad = res.find((r) => r && !r.ok);
+                rows.push({ eid, type: el.type, pieces: ch.pieces.length, ops, webifcNaked: wNaked, webifcOk: !wNaked, mine: mineOk ? "tanca" : bad ? bad.error : "sense calcular", mineOk });
+              }
+              return { left, right, rows };
+            }
+            return { ifcScenes };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/shapes2d", ["solids/point", "solids/diag/draw"], function(PT, DR) {
+            const NAMES = ["A+", "A\u2212", "B+", "B\u2212", "SA+", "SA\u2212", "SB+", "SB\u2212"];
+            const COLORS = ["#4da3ff", "#1f5fbf", "#ffa040", "#b86200", "#40d080", "#1f8a4c", "#ff5070", "#b0203a"];
+            function plane2d(T, diag) {
+              const F = diag.F, xy = (p) => {
+                const c = PT.coords(T, p);
+                return [c[F.a], c[F.b], 0];
+              };
+              const shapes = [], unbalanced = [], legend = [], opLabels = [];
+              let span = 0;
+              diag.operands.forEach((L) => L.forEach((e) => {
+                const a = xy(e.a), b = xy(e.b);
+                span = Math.max(span, Math.hypot(a[0] - b[0], a[1] - b[1]));
+              }));
+              const headMax = span * 6e-3;
+              diag.operands.forEach((L, k) => {
+                if (!L.length) return;
+                legend.push(NAMES[k] + " (" + L.length + " arestes)");
+                const segs = [], bal = /* @__PURE__ */ new Map();
+                for (const e of L) {
+                  const a = xy(e.a), b = xy(e.b);
+                  segs.push(a.concat(b));
+                  const m2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], d = [b[0] - a[0], b[1] - a[1]], l = Math.hypot(d[0], d[1]) || 1, u = [d[0] / l, d[1] / l], head = Math.min(headMax, 0.15 * l);
+                  segs.push([m2[0], m2[1], 0, m2[0] - head * (u[0] - 0.5 * u[1]), m2[1] - head * (u[1] + 0.5 * u[0]), 0]);
+                  segs.push([m2[0], m2[1], 0, m2[0] - head * (u[0] + 0.5 * u[1]), m2[1] - head * (u[1] - 0.5 * u[0]), 0]);
+                  const ka = PT.key(e.a), kb = PT.key(e.b);
+                  bal.set(ka, { n: ((bal.get(ka) || {}).n || 0) + 1, at: a });
+                  bal.set(kb, { n: ((bal.get(kb) || {}).n || 0) - 1, at: b });
+                }
+                shapes.push({ id: "op" + k, type: "segments", segs, color: COLORS[k] });
+                opLabels.push({ id: "op" + k, at: xy(L[0].a), text: NAMES[k], color: COLORS[k] });
+                for (const [, v] of bal) if (v.n) unbalanced.push({ op: NAMES[k], at: v.at, n: v.n });
+              });
+              unbalanced.forEach((u, i) => {
+                shapes.push(...DR.ring("desq" + i, u.at, Math.max(span * 0.012, 1e-4), "#ff2020", true));
+              });
+              const box = [Infinity, Infinity, -Infinity, -Infinity];
+              diag.operands.forEach((L) => L.forEach((e) => {
+                for (const p of [xy(e.a), xy(e.b)]) {
+                  box[0] = Math.min(box[0], p[0]);
+                  box[1] = Math.min(box[1], p[1]);
+                  box[2] = Math.max(box[2], p[0]);
+                  box[3] = Math.max(box[3], p[1]);
+                }
+              }));
+              shapes.push(...DR.callouts2d(unbalanced.map((u, i) => ({ id: "desq" + i, at: u.at, text: u.op + " no tanca (" + (u.n > 0 ? "+" : "") + u.n + ")", color: "#ff2020" })), box, "right"));
+              shapes.push(...DR.callouts2d(opLabels, box, "left"));
+              return { shapes, legend, unbalanced };
+            }
+            return { plane2d, NAMES, COLORS };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/shapes3d", ["solids/point", "solids/brep/corners", "solids/brep/toMesh", "solids/diag/draw"], function(PT, CO, TM, DR) {
+            const arr = (a) => Array.prototype.slice.call(a);
+            function faceShapes(S, color, id, opacity) {
+              try {
+                const m2 = TM.toMesh(S);
+                return DR.flatMesh(id, m2.positions, m2.indices, color, opacity);
+              } catch (e) {
+                const segs = [];
+                for (const f of S.faces) for (const L of f.loops) for (let i = 0; i < L.length; i++) {
+                  const a = PT.coords(S.T, S.verts[L[i]]), b = PT.coords(S.T, S.verts[L[(i + 1) % L.length]]);
+                  segs.push(a.concat(b));
+                }
+                return [{ id, type: "segments", segs, color }];
+              }
+            }
+            function deviations(S, mesh, minDev, name) {
+              const P = mesh.positions, out = [];
+              S.faces.forEach((f, fi) => CO.corners(S, f).forEach((L) => L.forEach((c) => {
+                const q = PT.coords(S.T, c);
+                let best = Infinity, bp = null;
+                for (let j = 0; j < P.length; j += 3) {
+                  const d = Math.hypot(P[j] - q[0], P[j + 1] - q[1], P[j + 2] - q[2]);
+                  if (d < best) {
+                    best = d;
+                    bp = [P[j], P[j + 1], P[j + 2]];
+                  }
+                }
+                if (best > minDev) out.push({ solid: name, dev: best, at: q, from: bp, face: fi });
+              })));
+              return out;
+            }
+            function scene(res, opts) {
+              opts = opts || {};
+              const minDev = opts.minDev || 1e-3, shapes = [], report = [];
+              if (res.X) shapes.push(...faceShapes(res.X, "#9aa4b2", "A", 0.35));
+              if (res.Bmesh) shapes.push(...DR.flatMesh("B", res.Bmesh.positions, res.Bmesh.indices, "#ff8a3d", 0.35, "#7a3a10"));
+              if (res.B && res.Bmesh) report.push(...deviations(res.B, res.Bmesh, minDev, "B"));
+              const bad = /* @__PURE__ */ new Set();
+              const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+              for (const s0 of shapes) if (s0.positions) for (let i = 0; i < s0.positions.length; i += 3) for (let k = 0; k < 3; k++) {
+                lo[k] = Math.min(lo[k], s0.positions[i + k]);
+                hi[k] = Math.max(hi[k], s0.positions[i + k]);
+              }
+              const R0 = Math.max(Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) * 0.01 || 0, 1e-3);
+              report.forEach((r, i) => {
+                shapes.push({ id: "dev" + i, type: "line", a: r.from, b: r.at, color: "#ff3df0" });
+                shapes.push({ id: "dev" + i, type: "point", p: r.at, color: "#ff3df0" });
+                shapes.push(...DR.ring("dev" + i, r.from, R0, "#ff2020"));
+                bad.add(r.face);
+              });
+              shapes.push(...DR.callouts3d(report.map((r, i) => ({ id: "dev" + i, at: r.from, text: r.solid + " cantonada despla\xE7ada " + (r.dev * 1e3).toFixed(1) + " mm", color: "#ff3df0" })), lo, hi));
+              if (res.B) for (const fi of bad) {
+                const f = res.B.faces[fi];
+                f.loops.forEach((L, li) => shapes.push({ id: "cara" + fi, type: "poly", pts: L.map((v) => PT.coords(res.T, res.B.verts[v])), closed: true, color: "#ffd23f" }));
+              }
+              if (res.diag && res.X) {
+                const n = res.T.normal(res.diag.P), p = res.T.get(res.diag.P), d = -p.fe / (Math.hypot(p.fa, p.fb, p.fc) * Math.pow(2, res.T.gridExp));
+                const all = [];
+                for (const s of shapes) if (s.positions) for (let i = 0; i < s.positions.length; i += 3) all.push(s.positions.slice(i, i + 3));
+                if (all.length) {
+                  const c = [0, 1, 2].map((k) => all.reduce((s, q) => s + q[k], 0) / all.length), r = Math.max(...all.map((q) => Math.hypot(q[0] - c[0], q[1] - c[1], q[2] - c[2])));
+                  const t = n[0] * c[0] + n[1] * c[1] + n[2] * c[2] - d, o = [c[0] - t * n[0], c[1] - t * n[1], c[2] - t * n[2]];
+                  const u0 = Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], u = [n[1] * u0[2] - n[2] * u0[1], n[2] * u0[0] - n[0] * u0[2], n[0] * u0[1] - n[1] * u0[0]], ul = Math.hypot(...u);
+                  for (let k = 0; k < 3; k++) u[k] /= ul;
+                  const v = [n[1] * u[2] - n[2] * u[1], n[2] * u[0] - n[0] * u[2], n[0] * u[1] - n[1] * u[0]];
+                  const P4 = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([a, b]) => [0, 1, 2].map((k) => o[k] + r * (a * u[k] + b * v[k])));
+                  shapes.push({ id: "pla", type: "poly", pts: P4, closed: true, fill: true, color: "#3dd6ff", opacity: 0.18 });
+                }
+              }
+              return { shapes, report };
+            }
+            return { scene, deviations };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/diag/vertex", ["solids/point", "solids/brep/toMesh", "solids/diag/draw"], function(PT, TM, DR) {
+            const FC = ["#4da3ff", "#ffa040", "#40d080", "#ff5070", "#c080ff", "#ffe040", "#40e0e0"];
+            const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+            const unit = (a) => {
+              const l = Math.hypot(...a) || 1;
+              return [a[0] / l, a[1] / l, a[2] / l];
+            };
+            function info(A, vi) {
+              const T = A.T, occ = [];
+              A.faces.forEach((f) => f.loops.forEach((L, li) => {
+                const i = L.indexOf(vi);
+                if (i >= 0) occ.push({ f, li, i });
+              }));
+              const V = PT.coords(T, A.verts[vi]), sg = new Map(occ.map((o) => [o.f.plane, o.f.sign])), free = (p) => Object.assign({}, p, { on: /* @__PURE__ */ new Set() });
+              let ridge = false, valley = false;
+              const faces = occ.map((o) => {
+                const L = o.f.loops[o.li], E = o.f.epl[o.li], n = L.length, ep = E[(o.i - 1 + n) % n], en = E[o.i];
+                const c = PT.make(T, o.f.plane, ep, en), at = c ? PT.coords(T, c) : V;
+                const s = sg.get(en) * PT.side(T, en, free(A.verts[L[(o.i - 1 + n) % n]]));
+                if (s < 0) ridge = true;
+                if (s > 0) valley = true;
+                const nf = T.normal(o.f.plane), d1 = unit(cross(nf, T.normal(ep))), d2 = unit(cross(nf, T.normal(en)));
+                const ang = Math.acos(Math.min(1, Math.abs(dot(d1, d2)))) * 180 / Math.PI;
+                return { plane: o.f.plane, ep, en, at, dev: Math.hypot(...sub(at, V)), ang, edge: s < 0 ? "carena" : s > 0 ? "vall" : "plana" };
+              });
+              return { V, faces, kind: ridge && valley ? "sella" : valley ? "c\xF2ncau" : "convex" };
+            }
+            function vertexScene(o) {
+              const A = o.A, T = A.T;
+              let vi = o.vi;
+              if (vi == null) {
+                let best = -1;
+                A.verts.forEach((_, i) => {
+                  const fs = A.faces.filter((f) => f.loops.some((L) => L.includes(i)));
+                  if (fs.length < 4) return;
+                  const d = Math.max(...info(A, i).faces.map((f) => f.dev));
+                  if (d > best) {
+                    best = d;
+                    vi = i;
+                  }
+                });
+              }
+              if (vi == null) throw new Error("geokernel.diag.vertex: el s\xF2lid no t\xE9 cap v\xE8rtex de 4 plans o m\xE9s");
+              const I = info(A, vi), V = I.V, col = new Map(I.faces.map((f, i) => [f.plane, FC[i % FC.length]]));
+              const s3 = [];
+              const m2 = o.mesh || TM.toMesh(A);
+              s3.push(...DR.flatMesh("A", m2.positions, m2.indices, "#9aa4b2", 0.35));
+              const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+              for (let i = 0; i < m2.positions.length; i += 3) for (let k = 0; k < 3; k++) {
+                lo[k] = Math.min(lo[k], m2.positions[i + k]);
+                hi[k] = Math.max(hi[k], m2.positions[i + k]);
+              }
+              const diag = Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) || 1;
+              A.faces.forEach((f) => {
+                if (!col.has(f.plane)) return;
+                f.loops.forEach((L) => s3.push({ id: "cara" + f.plane, type: "poly", pts: L.map((v) => PT.coords(T, A.verts[v])), closed: true, color: col.get(f.plane) }));
+              });
+              s3.push(...DR.ring("v", V, diag * 0.012, "#ff2020"));
+              const items3 = [{ id: "v", at: V, text: "v\xE8rtex de " + I.faces.length + " plans (" + I.kind + ")", color: "#ff2020" }];
+              I.faces.filter((f) => f.dev > 1e-6).forEach((f) => {
+                s3.push({ id: "dev" + f.plane, type: "line", a: V, b: f.at, color: "#ff3df0" }, { id: "dev" + f.plane, type: "point", p: f.at, color: "#ff3df0" });
+                s3.push(...DR.ring("dev" + f.plane, f.at, diag * 8e-3, "#ff3df0"));
+                items3.push({ id: "dev" + f.plane, at: f.at, text: "cantonada de la cara " + f.plane + ": a " + (f.dev * 1e3).toFixed(1) + " mm", color: "#ff3df0" });
+              });
+              const worst = I.faces.reduce((a, b) => b.dev > a.dev ? b : a);
+              const wf = A.faces.find((f) => f.plane === worst.plane), wl = wf.loops.find((L) => L.includes(vi)), wi = wl.indexOf(vi), wn = wl.length;
+              const edges = [[PT.coords(T, A.verts[wl[(wi - 1 + wn) % wn]]), V, worst.ep], [V, PT.coords(T, A.verts[wl[(wi + 1) % wn]]), worst.en]];
+              const EC = ["#00ffd0", "#ffff00"];
+              edges.forEach(([a, b, X], k) => {
+                s3.push({ id: "aresta" + X, type: "line", a, b, color: EC[k] }, { id: "aresta" + X, type: "point", p: a, color: EC[k] }, { id: "aresta" + X, type: "point", p: b, color: EC[k] });
+                items3.push({ id: "aresta" + X, at: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], text: "aresta cara " + worst.plane + " \u2229 cara " + X, color: EC[k] });
+              });
+              for (const pl of /* @__PURE__ */ new Set([worst.plane, worst.ep, worst.en])) {
+                const f = A.faces.find((x) => x.plane === pl), pts = f.loops[0].map((v) => PT.coords(T, A.verts[v]));
+                items3.push({ id: "cara" + pl, at: [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length), text: "cara " + pl, color: col.get(pl) });
+              }
+              s3.push(...DR.callouts3d(items3, lo, hi));
+              const n = T.normal(worst.plane), u = unit(Math.abs(n[2]) < 0.9 ? cross([0, 0, 1], n) : cross(n, [0, 1, 0])), w = cross(n, u);
+              const xy = (p) => {
+                const d = sub(p, V);
+                return [dot(d, u), dot(d, w), 0];
+              };
+              const R = Math.max(worst.dev * 1.4, diag * 0.05);
+              const s2 = [];
+              const near = (p) => Math.hypot(...sub(p, V)) < R * 2.5;
+              A.faces.forEach((f) => f.loops.forEach((L) => {
+                const segs = [];
+                for (let i = 0; i < L.length; i++) {
+                  const a = PT.coords(T, A.verts[L[i]]), b = PT.coords(T, A.verts[L[(i + 1) % L.length]]);
+                  if (near(a) || near(b)) segs.push(xy(a).concat(xy(b)));
+                }
+                if (segs.length) s2.push({ id: "cara" + f.plane, type: "segments", segs, color: col.get(f.plane) || "#5a6270" });
+              }));
+              const items2 = [], c2 = xy(worst.at), Ls = [];
+              [[worst.ep, "d'entrada"], [worst.en, "de sortida"]].forEach(([X, tag], k) => {
+                const d = unit(cross(T.normal(worst.plane), T.normal(X))), dd = [dot(d, u), dot(d, w)], l = Math.hypot(dd[0], dd[1]) || 1;
+                Ls.push({ X, tag, d, e: [dd[0] / l, dd[1] / l], name: "L" + (k + 1), color: col.get(X) || "#ffffff" });
+              });
+              const ang = Math.atan2(Math.hypot(...cross(Ls[0].d, Ls[1].d)), Math.abs(dot(Ls[0].d, Ls[1].d)));
+              const sepV = Ls.map((Lx) => Math.hypot(...cross(sub(V, worst.at), Lx.d)));
+              const span = (Lx) => {
+                const sv = -c2[0] * Lx.e[0] - c2[1] * Lx.e[1], m3 = Math.abs(sv) * 0.25 + R * 0.1;
+                return sv < 0 ? [sv - m3, m3] : [-m3, sv + m3];
+              };
+              const draw = (map, tagId) => {
+                for (const Lx of Ls) {
+                  const [s0, s1] = span(Lx), p = map([c2[0] + Lx.e[0] * s0, c2[1] + Lx.e[1] * s0]), q = map([c2[0] + Lx.e[0] * s1, c2[1] + Lx.e[1] * s1]);
+                  s2.push({ id: tagId + Lx.name, type: "segments", segs: [p.concat(q)], color: Lx.color, dash: [R * 0.02, R * 0.015] });
+                  const far = Math.hypot(p[0] - map([0, 0])[0], p[1] - map([0, 0])[1]) < Math.hypot(q[0] - map([0, 0])[0], q[1] - map([0, 0])[1]) ? p : q;
+                  s2.push({ id: tagId + Lx.name, type: "label", p: far, text: Lx.name, color: Lx.color });
+                }
+                edges.forEach(([ea, eb], k) => {
+                  const p = map(xy(ea)), q = map(xy(eb));
+                  s2.push({ id: tagId + "aresta" + k, type: "segments", segs: [p.concat(q)], color: EC[k] });
+                });
+                s2.push(...DR.ring(tagId + "v", map([0, 0]), R * 0.03, "#ff2020", true));
+                s2.push({ id: tagId + "cw", type: "point", p: map(c2), color: "#ff3df0" }, ...DR.ring(tagId + "cw", map(c2), R * 0.03, "#ff3df0", true));
+              };
+              draw((p) => [p[0], p[1], 0], "r");
+              Ls.forEach((Lx) => items2.push({ id: "r" + Lx.name, at: [c2[0] + Lx.e[0] * R * 0.15, c2[1] + Lx.e[1] * R * 0.15, 0], text: Lx.name + " = recta cara " + worst.plane + " \u2229 cara " + Lx.X + " (aresta " + Lx.tag + "); passa a " + (sepV[Ls.indexOf(Lx)] * 1e6).toFixed(3) + " \xB5m del v\xE8rtex", color: Lx.color }));
+              edges.forEach(([ea, eb, X], k) => {
+                const p = xy(ea), q = xy(eb);
+                items2.push({ id: "raresta" + k, at: [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, 0], text: "ARESTA cara " + worst.plane + " \u2229 cara " + X + " (" + (Math.hypot(...sub(eb, ea)) * 1e3).toFixed(1) + " mm), sobre " + Ls[k].name, color: EC[k] });
+              });
+              items2.push({ id: "rv", at: [0, 0, 0], text: "v\xE8rtex de la malla (sobre els 4 plans)", color: "#ff2020" });
+              items2.push({ id: "rcw", at: c2, text: "L1 i L2 es tallen aqu\xED: cantonada de la cara " + worst.plane + " a " + (worst.dev * 1e3).toFixed(1) + " mm; angle entre L1 i L2 = " + (ang * 1e6).toFixed(2) + " \xB5rad (" + (ang * 180 / Math.PI).toExponential(2) + "\xB0)", color: "#ff3df0" });
+              const box = [Math.min(-R * 1.2, c2[0] - R * 0.2), -R * 1.2, Math.max(R * 1.2, c2[0] + R * 0.2), R * 1.2];
+              s2.push(...DR.callouts2d(items2, box, "right"));
+              s2.push({ id: "tit", type: "label", p: [box[0], box[3] * 1.15, 0], text: "Vist des de la normal de la cara " + worst.plane + " (unitats: m) \u2014 a escala real L1 i L2 semblen la mateixa recta", color: "#e6e9ef" });
+              const e1 = Ls[0].e, p1 = [-e1[1], e1[0]], O = [0, box[1] - R * 1.6];
+              const st = (p) => [(p[0] - c2[0]) * e1[0] + (p[1] - c2[1]) * e1[1], (p[0] - c2[0]) * p1[0] + (p[1] - c2[1]) * p1[1]];
+              let tmax = 0;
+              for (const Lx of Ls) for (const sv of span(Lx)) tmax = Math.max(tmax, Math.abs(st([c2[0] + Lx.e[0] * sv, c2[1] + Lx.e[1] * sv])[1]));
+              edges.forEach(([ea, eb]) => {
+                for (const q of [ea, eb]) tmax = Math.max(tmax, Math.abs(st(xy(q))[1]));
+              });
+              const K = tmax > 0 ? Math.pow(10, Math.floor(Math.log10(R * 0.35 / tmax))) : 1;
+              const mapK = (p) => {
+                const [sv, tv] = st(p);
+                return [O[0] + c2[0] + sv * e1[0] + K * tv * p1[0], O[1] + c2[1] + sv * e1[1] + K * tv * p1[1], 0];
+              };
+              draw(mapK, "k");
+              s2.push({ id: "tit2", type: "label", p: [box[0], O[1] + R * 0.75, 0], text: "El mateix amb la direcci\xF3 perpendicular a L1 ampliada \xD7" + K.toExponential(0) + ": L1 i L2 es tallen al punt lila", color: "#e6e9ef" });
+              s2.push({ id: "kL", type: "label", p: mapK(c2).map((x, i) => i === 1 ? x - R * 0.12 : x), text: "tall L1 \xD7 L2", color: "#ff3df0" });
+              return { shapes3d: s3, shapes2d: s2, vi, kind: I.kind, faces: I.faces };
+            }
+            return { vertexScene, vertexInfo: info };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/exact/bigint", [], function() {
+            const Z = 0n;
+            const sign = (a) => a > Z ? 1 : a < Z ? -1 : 0;
+            const abs = (a) => a < Z ? -a : a;
+            function gcd(a, b) {
+              a = abs(a);
+              b = abs(b);
+              while (b) {
+                const t = a % b;
+                a = b;
+                b = t;
+              }
+              return a;
+            }
+            function gcdAll(list) {
+              let g = Z;
+              for (const v of list) {
+                g = gcd(g, v);
+                if (g === 1n) break;
+              }
+              return g;
+            }
+            const det2 = (a, b, c, d) => a * d - b * c;
+            const det3 = (a, b, c, d, e, f, g, h, i) => a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+            const toNum = (a) => Number(a);
+            return { sign, abs, gcd, gcdAll, det2, det3, toNum };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/exact/sign", ["solids/exact/bigint"], function(B) {
+            const U = Math.pow(2, -52);
+            const stats = { calls: 0, exact: 0 };
+            function dotSign(af, bf, ab, bb) {
+              stats.calls++;
+              const n = af.length;
+              let s = 0, m2 = 0;
+              for (let i = 0; i < n; i++) {
+                const t = af[i] * bf[i];
+                s += t;
+                m2 += Math.abs(t);
+              }
+              const bound = m2 * (n + 6) * U;
+              if (s > bound) return 1;
+              if (s < -bound) return -1;
+              stats.exact++;
+              const A = typeof ab === "function" ? ab() : ab, Bv = typeof bb === "function" ? bb() : bb;
+              let e = 0n;
+              for (let i = 0; i < n; i++) e += A[i] * Bv[i];
+              return B.sign(e);
+            }
+            return { dotSign, stats, resetStats: () => {
+              stats.calls = 0;
+              stats.exact = 0;
+            } };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/make/box", [], function() {
+            function box(a, b) {
+              const [x0, y0, z0] = a, [x1, y1, z1] = b;
+              if (!(x1 > x0 && y1 > y0 && z1 > z0)) throw new Error("geokernel.box: capsa buida " + a + " / " + b);
+              const positions = [x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1];
+              const indices = [0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7];
+              return { positions: Float64Array.from(positions), indices: Uint32Array.from(indices) };
+            }
+            return { box };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/make/oracle", [], function() {
+            function boxesVolume(seq) {
+              const cs = [[], [], []];
+              for (const s of seq) for (let k = 0; k < 3; k++) {
+                cs[k].push(s.box[0][k], s.box[1][k]);
+              }
+              const u = cs.map((l) => [...new Set(l)].sort((a, b) => a - b));
+              const inBox = (p, b) => p[0] > b[0][0] && p[0] < b[1][0] && p[1] > b[0][1] && p[1] < b[1][1] && p[2] > b[0][2] && p[2] < b[1][2];
+              let vol = 0;
+              for (let i = 0; i + 1 < u[0].length; i++) for (let j = 0; j + 1 < u[1].length; j++) for (let k = 0; k + 1 < u[2].length; k++) {
+                const p = [(u[0][i] + u[0][i + 1]) / 2, (u[1][j] + u[1][j + 1]) / 2, (u[2][k] + u[2][k + 1]) / 2];
+                let inside = inBox(p, seq[0].box);
+                for (let s = 1; s < seq.length; s++) {
+                  const b = inBox(p, seq[s].box), op = seq[s].op;
+                  inside = op === "union" ? inside || b : op === "intersection" ? inside && b : inside && !b;
+                }
+                if (inside) vol += (u[0][i + 1] - u[0][i]) * (u[1][j + 1] - u[1][j]) * (u[2][k + 1] - u[2][k]);
+              }
+              return vol;
+            }
+            return { boxesVolume };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/make/transform", [], function() {
+            function rotation(ax, ang) {
+              const l = Math.hypot(ax[0], ax[1], ax[2]), x = ax[0] / l, y = ax[1] / l, z = ax[2] / l, c = Math.cos(ang), s = Math.sin(ang), C = 1 - c;
+              return [x * x * C + c, x * y * C - z * s, x * z * C + y * s, y * x * C + z * s, y * y * C + c, y * z * C - x * s, z * x * C - y * s, z * y * C + x * s, z * z * C + c];
+            }
+            function randomRotation(rnd) {
+              return rotation([rnd() - 0.5, rnd() - 0.5, rnd() - 0.5 + 1e-9], rnd() * Math.PI * 2);
+            }
+            function transform(mesh, R, t) {
+              t = t || [0, 0, 0];
+              const P = mesh.positions, out = new Float64Array(P.length);
+              for (let i = 0; i < P.length; i += 3) {
+                const x = P[i], y = P[i + 1], z = P[i + 2];
+                out[i] = R[0] * x + R[1] * y + R[2] * z + t[0];
+                out[i + 1] = R[3] * x + R[4] * y + R[5] * z + t[1];
+                out[i + 2] = R[6] * x + R[7] * y + R[8] * z + t[2];
+              }
+              return { positions: out, indices: mesh.indices };
+            }
+            return { rotation, randomRotation, transform };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/plane", ["solids/exact/bigint"], function(B) {
+            function table(opts) {
+              opts = opts || {};
+              const gridExp = opts.gridExp != null ? opts.gridExp : 30;
+              const normBits = opts.normBits != null ? opts.normBits : 30;
+              const G = Math.pow(2, gridExp), NS = Math.pow(2, normBits);
+              const planes = [], byKey = /* @__PURE__ */ new Map();
+              const toGrid = (v) => {
+                const x = v * G;
+                if (!Number.isFinite(x)) throw new Error("geokernel.plane: coordenada no finita " + v);
+                return BigInt(Math.round(x));
+              };
+              const fromGrid = (v) => v / G;
+              function fromInts(a, b, c, e, reduced) {
+                if (a === 0n && b === 0n && c === 0n) throw new Error("geokernel.plane: normal nul\xB7la");
+                if (!reduced) {
+                  const g = B.gcdAll([a, b, c, e]);
+                  a /= g;
+                  b /= g;
+                  c /= g;
+                  e /= g;
+                }
+                let s = 1;
+                const first = a !== 0n ? a : b !== 0n ? b : c;
+                if (first < 0n) {
+                  a = -a;
+                  b = -b;
+                  c = -c;
+                  e = -e;
+                  s = -1;
+                }
+                const key = a + "," + b + "," + c + "," + e;
+                let id = byKey.get(key);
+                if (id == null) {
+                  id = planes.length;
+                  planes.push({ id, a, b, c, e, fa: Number(a), fb: Number(b), fc: Number(c), fe: Number(e) });
+                  byKey.set(key, id);
+                }
+                return { id, sign: s };
+              }
+              function fromNormalPoint(n, p) {
+                const m2 = Math.max(Math.abs(n[0]), Math.abs(n[1]), Math.abs(n[2]));
+                if (!(m2 > 0) || !Number.isFinite(m2)) throw new Error("geokernel.plane: normal inv\xE0lida " + n);
+                const k = NS / m2;
+                const a = BigInt(Math.round(n[0] * k)), b = BigInt(Math.round(n[1] * k)), c = BigInt(Math.round(n[2] * k));
+                const e = -(a * toGrid(p[0]) + b * toGrid(p[1]) + c * toGrid(p[2]));
+                return fromInts(a, b, c, e);
+              }
+              const get = (id) => {
+                const p = planes[id];
+                if (!p) throw new Error("geokernel.plane: no hi ha el pla " + id);
+                return p;
+              };
+              function normal(id, sign) {
+                const p = get(id), l = Math.hypot(p.fa, p.fb, p.fc), s = (sign || 1) / l;
+                return [p.fa * s, p.fb * s, p.fc * s];
+              }
+              return { gridExp, normBits, planes, fromInts, fromNormalPoint, get, normal, toGrid, fromGrid, size: () => planes.length };
+            }
+            return { table };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/plane/snap", [], function() {
+            function distance(T, id, x) {
+              const p = T.get(id), G = Math.pow(2, T.gridExp);
+              return (p.fa * x[0] * G + p.fb * x[1] * G + p.fc * x[2] * G + p.fe) / (Math.hypot(p.fa, p.fb, p.fc) * G);
+            }
+            const cellKey = (n, h) => Math.floor(n[0] / h) + "," + Math.floor(n[1] / h) + "," + Math.floor(n[2] / h);
+            function index(T, h) {
+              let I = T._snapIdx;
+              if (!I || I.h !== h) I = T._snapIdx = { h, n: 0, cells: /* @__PURE__ */ new Map() };
+              for (; I.n < T.size(); I.n++) {
+                const k = cellKey(T.normal(I.n), h);
+                let c = I.cells.get(k);
+                if (!c) {
+                  c = [];
+                  I.cells.set(k, c);
+                }
+                c.push(I.n);
+              }
+              return I;
+            }
+            function candidates(I, u) {
+              const out = /* @__PURE__ */ new Set();
+              for (const s of [1, -1]) {
+                const v = [u[0] * s, u[1] * s, u[2] * s], b = [0, 1, 2].map((i) => Math.floor(v[i] / I.h));
+                for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+                  const c = I.cells.get(b[0] + dx + "," + (b[1] + dy) + "," + (b[2] + dz));
+                  if (c) for (const id of c) out.add(id);
+                }
+              }
+              return [...out].sort((a, b) => a - b);
+            }
+            function snap(T, n, c, pts, opts) {
+              const l = Math.hypot(n[0], n[1], n[2]);
+              if (!(l > 0)) throw new Error("geokernel.snap: normal nul\xB7la");
+              const u = [n[0] / l, n[1] / l, n[2] / l], cosT = Math.cos(opts.angTol);
+              const I = index(T, Math.max(opts.angTol, 1e-6));
+              for (const id of candidates(I, u)) {
+                const m2 = T.normal(id), d = u[0] * m2[0] + u[1] * m2[1] + u[2] * m2[2];
+                if (Math.abs(d) < cosT) continue;
+                if (pts.every((x) => Math.abs(distance(T, id, x)) <= opts.distTol)) return { id, sign: d > 0 ? 1 : -1 };
+              }
+              return T.fromNormalPoint(u, c);
+            }
+            return { snap, distance };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/plane/through", ["solids/exact/bigint"], function(B) {
+            function throughPointsDir(T, a, b, P) {
+              const p = T.get(P);
+              const r1 = a.h, r2 = b.h, r3 = [p.a, p.b, p.c, 0n];
+              const m2 = (i, j, k) => B.det3(r1[i], r1[j], r1[k], r2[i], r2[j], r2[k], r3[i], r3[j], r3[k]);
+              const A = m2(1, 2, 3), Bc = -m2(0, 2, 3), C = m2(0, 1, 3), D = -m2(0, 1, 2);
+              if (A === 0n && Bc === 0n && C === 0n) throw new Error("geokernel.through: punts iguals o recta perpendicular al pla");
+              return T.fromInts(A, Bc, C, D);
+            }
+            return { throughPointsDir };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/plane2d/frame", ["solids/point", "solids/exact/bigint"], function(PT, B) {
+            const U = Math.pow(2, -52);
+            function frame(T, P) {
+              const p = T.get(P);
+              const n = [p.fa, p.fb, p.fc];
+              let k = 0;
+              if (Math.abs(n[1]) > Math.abs(n[k])) k = 1;
+              if (Math.abs(n[2]) > Math.abs(n[k])) k = 2;
+              let a = (k + 1) % 3, b = (k + 2) % 3;
+              if (n[k] < 0) {
+                const t = a;
+                a = b;
+                b = t;
+              }
+              function cmpC(i, P1, Q1) {
+                const x = P1.f[i] * Q1.f[3], y = Q1.f[i] * P1.f[3], m2 = (Math.abs(x) + Math.abs(y)) * 4 * U;
+                if (x - y > m2) return 1;
+                if (y - x > m2) return -1;
+                return B.sign(P1.h[i] * Q1.h[3] - Q1.h[i] * P1.h[3]);
+              }
+              const cmpU = (P1, Q1) => cmpC(a, P1, Q1);
+              const cmpV = (P1, Q1) => cmpC(b, P1, Q1);
+              const lex = (P1, Q1) => cmpU(P1, Q1) || cmpV(P1, Q1);
+              function lineDir(X) {
+                const q = T.get(X);
+                const c = [p.b * q.c - p.c * q.b, p.c * q.a - p.a * q.c, p.a * q.b - p.b * q.a];
+                return [c[a], c[b]];
+              }
+              function sense(X, A1, B1) {
+                const d = lineDir(X);
+                const du = B1.h[a] * A1.h[3] - A1.h[a] * B1.h[3], dv = B1.h[b] * A1.h[3] - A1.h[b] * B1.h[3];
+                return B.sign(du * d[0] + dv * d[1]);
+              }
+              function lexIncreasing(X) {
+                const d = lineDir(X);
+                return d[0] > 0n || d[0] === 0n && d[1] > 0n;
+              }
+              const orient = (X, s, Q1) => -s * PT.side(T, X, Q1);
+              function parallel(X, Y) {
+                const d = lineDir(X), e = lineDir(Y);
+                return d[0] * e[1] - d[1] * e[0] === 0n;
+              }
+              return { P, k, a, b, cmpU, cmpV, lex, lineDir, sense, lexIncreasing, orient, parallel };
+            }
+            return { frame };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/point", ["solids/exact/bigint", "solids/exact/sign"], function(B, S) {
+            const bits = (x) => (x < 0n ? -x : x).toString(2).length;
+            function approx(h) {
+              const s = Math.max(0, Math.max(bits(h[0]), bits(h[1]), bits(h[2]), bits(h[3])) - 1e3);
+              if (!s) return h.map(Number);
+              return h.map((x) => {
+                const a = x < 0n ? -x : x, k = Math.max(0, bits(a) - 60), v = Number(a >> BigInt(k)) * Math.pow(2, k - s);
+                return x < 0n ? -v : v;
+              });
+            }
+            function make(T, i, j, k) {
+              const p = T.get(i), q = T.get(j), r = T.get(k);
+              let W = B.det3(p.a, p.b, p.c, q.a, q.b, q.c, r.a, r.b, r.c);
+              if (W === 0n) return null;
+              let X = B.det3(-p.e, p.b, p.c, -q.e, q.b, q.c, -r.e, r.b, r.c);
+              let Y = B.det3(p.a, -p.e, p.c, q.a, -q.e, q.c, r.a, -r.e, r.c);
+              let Zc = B.det3(p.a, p.b, -p.e, q.a, q.b, -q.e, r.a, r.b, -r.e);
+              if (W < 0n) {
+                W = -W;
+                X = -X;
+                Y = -Y;
+                Zc = -Zc;
+              }
+              const h = [X, Y, Zc, W];
+              return { p: [i, j, k], h, f: approx(h), on: /* @__PURE__ */ new Set([i, j, k]) };
+            }
+            function side(T, planeId, pt) {
+              if (pt.on.has(planeId)) return 0;
+              const p = T.get(planeId);
+              return S.dotSign([p.fa, p.fb, p.fc, p.fe], pt.f, () => [p.a, p.b, p.c, p.e], pt.h);
+            }
+            function equal(a, b) {
+              if (a === b) return true;
+              const A = a.h, Bh = b.h;
+              return A[0] * Bh[3] === Bh[0] * A[3] && A[1] * Bh[3] === Bh[1] * A[3] && A[2] * Bh[3] === Bh[2] * A[3];
+            }
+            const PR = [67108859, 67108837, 67108819], PRB = PR.map(BigInt);
+            function invN(a, p) {
+              let r0 = p, r1 = a, s0 = 0, s1 = 1;
+              while (r1) {
+                const q = Math.floor(r0 / r1);
+                [r0, r1] = [r1, r0 - q * r1];
+                [s0, s1] = [s1, s0 - q * s1];
+              }
+              return (s0 % p + p) % p;
+            }
+            const mdN = (x, k) => {
+              const r = Number(x % PRB[k]);
+              return r < 0 ? r + PR[k] : r;
+            };
+            function key(pt) {
+              if (pt._key) return pt._key;
+              const h = pt.h, out = [];
+              for (let k = 0; k < 3; k++) {
+                const w = mdN(h[3], k);
+                if (!w) {
+                  const g = B.gcdAll(h);
+                  return pt._key = "g" + h.map((v) => (v / g).toString(36)).join(":");
+                }
+                const iw = invN(w, PR[k]);
+                for (let c = 0; c < 3; c++) out.push((mdN(h[c], k) * iw % PR[k]).toString(36));
+              }
+              return pt._key = out.join(":");
+            }
+            function coords(T, pt) {
+              const G = Math.pow(2, -T.gridExp), s = Math.max(0, bits(pt.h[3]) - 900), S2 = BigInt(s), w = Number(pt.h[3] >> S2);
+              return [0, 1, 2].map((i) => {
+                const q = pt.h[i] * 1048576n / pt.h[3];
+                return (Number(q) / 1048576 + Number(pt.h[i] * 1048576n - q * pt.h[3] >> S2) / w / 1048576) * G;
+              });
+            }
+            return { make, side, equal, key, coords, approx };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/arrangement", ["solids/point", "solids/exact/bigint"], function(PT, B) {
+            function build(F, subs, nOps) {
+              const nodes = [], nodeOf = /* @__PURE__ */ new Map();
+              const node = (p) => {
+                const k = PT.key(p);
+                let i = nodeOf.get(k);
+                if (i == null) {
+                  i = nodes.length;
+                  nodeOf.set(k, i);
+                  nodes.push({ p, out: [] });
+                }
+                return i;
+              };
+              const edges = [], edgeOf = /* @__PURE__ */ new Map();
+              for (const e of subs) {
+                let u = node(e.a), v = node(e.b);
+                if (u === v) continue;
+                let d = 1, s = e.s;
+                if (u > v) {
+                  const t = u;
+                  u = v;
+                  v = t;
+                  d = -1;
+                  s = -s;
+                }
+                const k = u + "," + v;
+                let E = edgeOf.get(k);
+                if (!E) {
+                  E = { u, v, X: e.X, s, delta: new Int32Array(nOps) };
+                  edgeOf.set(k, E);
+                  edges.push(E);
+                }
+                E.delta[e.op] += d;
+              }
+              const H = [];
+              edges.forEach((E, i) => {
+                const d = F.lineDir(E.X);
+                H.push({ from: E.u, to: E.v, e: i, sg: 1, du: E.s > 0 ? d[0] : -d[0], dv: E.s > 0 ? d[1] : -d[1] });
+                H.push({ from: E.v, to: E.u, e: i, sg: -1, du: E.s > 0 ? -d[0] : d[0], dv: E.s > 0 ? -d[1] : d[1] });
+                nodes[E.u].out.push(2 * i);
+                nodes[E.v].out.push(2 * i + 1);
+              });
+              const half = (h) => h.dv > 0n || h.dv === 0n && h.du > 0n ? 0 : 1;
+              const cmp = (x, y) => {
+                const a = H[x], b = H[y];
+                const ha = half(a), hb = half(b);
+                if (ha !== hb) return ha - hb;
+                return -B.sign(a.du * b.dv - a.dv * b.du);
+              };
+              const pos = new Int32Array(H.length);
+              for (const N of nodes) {
+                N.out.sort(cmp);
+                N.out.forEach((h, i) => {
+                  pos[h] = i;
+                });
+              }
+              const twin = (h) => h ^ 1;
+              const next = (h) => {
+                const t = twin(h), N = nodes[H[t].from];
+                return N.out[(pos[t] - 1 + N.out.length) % N.out.length];
+              };
+              const face = new Int32Array(H.length).fill(-1), faces = [];
+              for (let h = 0; h < H.length; h++) {
+                if (face[h] >= 0) continue;
+                const fi = faces.length, cyc = [];
+                for (let x = h, guard = 0; face[x] < 0; x = next(x), guard++) {
+                  face[x] = fi;
+                  cyc.push(x);
+                  if (guard > H.length) throw new Error("geokernel.arrangement: cicle infinit");
+                }
+                faces.push(cyc);
+              }
+              return { nodes, edges, H, faces, face, next, twin, pos };
+            }
+            return { build };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/evaluate", ["solids/region2d/split", "solids/region2d/arrangement", "solids/region2d/winding", "solids/region2d/extract"], function(SP, AR, WN, EX) {
+            function evaluate(T, F, operands, preds) {
+              const all = [];
+              operands.forEach((list, op) => {
+                for (const e of list) all.push({ a: e.a, b: e.b, X: e.X, s: e.s, op });
+              });
+              if (!all.length) return preds.map(() => []);
+              try {
+                const subs = SP.split(T, F, all);
+                const A = AR.build(F, subs, operands.length);
+                const W = WN.windings(F, A, operands.length);
+                return preds.map((pred) => EX.extract(A, W.map((w) => w ? !!pred(w) : false)));
+              } catch (e) {
+                if (!e.diag) e.diag = { P: F.P, F, operands };
+                throw e;
+              }
+            }
+            return { evaluate };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/extract", [], function() {
+            function extract(A, inside) {
+              const { nodes, edges, H, face, pos } = A;
+              const isOut = (h) => inside[face[h]] && !inside[face[h ^ 1]];
+              const used = new Uint8Array(H.length), loops = [];
+              for (let h0 = 0; h0 < H.length; h0++) {
+                if (used[h0] || !isOut(h0)) continue;
+                const hs = [];
+                for (let h = h0, guard = 0; !used[h]; guard++) {
+                  used[h] = 1;
+                  hs.push(h);
+                  const t = h ^ 1, N = nodes[H[h].to];
+                  let x = t;
+                  for (let i = 1; i <= N.out.length; i++) {
+                    x = N.out[(pos[t] - i + N.out.length * 2) % N.out.length];
+                    if (isOut(x)) break;
+                  }
+                  if (!isOut(x)) throw new Error("geokernel.extract: contorn obert");
+                  h = x;
+                  if (guard > H.length) throw new Error("geokernel.extract: contorn infinit");
+                }
+                const ed = hs.map((h) => ({ p: nodes[H[h].from].p, X: edges[H[h].e].X, s: edges[H[h].e].s * H[h].sg }));
+                for (let changed = true; changed && ed.length > 3; ) {
+                  changed = false;
+                  for (let i = 0; i < ed.length && ed.length > 3; i++) {
+                    const pr = ed[(i + ed.length - 1) % ed.length];
+                    if (pr.X === ed[i].X && pr.s === ed[i].s) {
+                      ed.splice(i, 1);
+                      changed = true;
+                      i--;
+                    }
+                  }
+                }
+                loops.push({ pts: ed.map((e) => e.p), X: ed.map((e) => e.X), s: ed.map((e) => e.s) });
+              }
+              return loops;
+            }
+            return { extract };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/reverse", [], function() {
+            function reverseLoop(l) {
+              const n = l.pts.length, pts = [], X = [];
+              for (let j = 0; j < n; j++) {
+                pts.push(l.pts[n - 1 - j]);
+                X.push(l.X[((n - 2 - j) % n + n) % n]);
+              }
+              return { pts, X };
+            }
+            return { reverseLoop };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/split", ["solids/point"], function(PT) {
+            function split(T, F, edges) {
+              const n = edges.length;
+              const xy = (p) => [p.f[F.a] / p.f[3], p.f[F.b] / p.f[3]];
+              const box = edges.map((e) => {
+                const A = xy(e.a), B = xy(e.b);
+                const m2 = 1e-9 * (Math.abs(A[0]) + Math.abs(A[1]) + Math.abs(B[0]) + Math.abs(B[1]) + 1);
+                return [Math.min(A[0], B[0]) - m2, Math.min(A[1], B[1]) - m2, Math.max(A[0], B[0]) + m2, Math.max(A[1], B[1]) + m2];
+              });
+              const cuts = edges.map(() => []);
+              const ord = edges.map((_, i) => i).sort((i, j) => box[i][0] - box[j][0]);
+              const strictlyIn = (q, e) => {
+                const c1 = F.lex(e.a, q), c2 = F.lex(q, e.b);
+                return c1 !== 0 && c1 === c2;
+              };
+              for (let oi = 0; oi < n; oi++) {
+                const i = ord[oi], bi = box[i], ei = edges[i];
+                for (let oj = oi + 1; oj < n; oj++) {
+                  const j = ord[oj], bj = box[j];
+                  if (bj[0] > bi[2]) break;
+                  if (bj[1] > bi[3] || bj[3] < bi[1]) continue;
+                  const ej = edges[j];
+                  const oa = F.orient(ei.X, ei.s, ej.a), ob = F.orient(ei.X, ei.s, ej.b);
+                  if (oa === 0 && ob === 0) {
+                    if (strictlyIn(ej.a, ei)) cuts[i].push(ej.a);
+                    if (strictlyIn(ej.b, ei)) cuts[i].push(ej.b);
+                    if (strictlyIn(ei.a, ej)) cuts[j].push(ei.a);
+                    if (strictlyIn(ei.b, ej)) cuts[j].push(ei.b);
+                    continue;
+                  }
+                  if (oa === ob) continue;
+                  const oc = F.orient(ej.X, ej.s, ei.a), od = F.orient(ej.X, ej.s, ei.b);
+                  if (oc === od) continue;
+                  if (oa * ob < 0 && oc * od < 0) {
+                    const p = PT.make(T, F.P, ei.X, ej.X);
+                    if (!p) throw new Error("geokernel.split: rectes que es creuen per\xF2 paral\xB7leles");
+                    cuts[i].push(p);
+                    cuts[j].push(p);
+                  } else if (oc * od < 0) {
+                    cuts[i].push(oa === 0 ? ej.a : ej.b);
+                  } else if (oa * ob < 0) {
+                    cuts[j].push(oc === 0 ? ei.a : ei.b);
+                  }
+                }
+              }
+              const out = [];
+              edges.forEach((e, i) => {
+                if (!cuts[i].length) {
+                  out.push(e);
+                  return;
+                }
+                const asc = F.lex(e.a, e.b) < 0;
+                const pts = cuts[i].slice().sort((p, q) => asc ? F.lex(p, q) : F.lex(q, p));
+                let prev = e.a;
+                for (const p of pts) {
+                  if (PT.equal(p, prev)) continue;
+                  out.push({ a: prev, b: p, X: e.X, s: e.s, op: e.op });
+                  prev = p;
+                }
+                if (!PT.equal(prev, e.b)) out.push({ a: prev, b: e.b, X: e.X, s: e.s, op: e.op });
+              });
+              return out;
+            }
+            return { split };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/region2d/winding", [], function() {
+            function windings(F, A, nOps) {
+              const { nodes, edges, H, faces, face } = A;
+              const uf = nodes.map((_, i) => i), find = (x) => {
+                while (uf[x] !== x) x = uf[x] = uf[uf[x]];
+                return x;
+              };
+              for (const E of edges) uf[find(E.u)] = find(E.v);
+              const comps = /* @__PURE__ */ new Map();
+              nodes.forEach((N, i) => {
+                if (!N.out.length) return;
+                const r = find(i);
+                if (!comps.has(r)) comps.set(r, []);
+                comps.get(r).push(i);
+              });
+              const W = faces.map(() => null);
+              for (const [r, list] of comps) {
+                let q = list[0];
+                for (const i of list) {
+                  const c = F.cmpV(nodes[i].p, nodes[q].p) || F.cmpU(nodes[i].p, nodes[q].p);
+                  if (c < 0) q = i;
+                }
+                const outer = face[nodes[q].out[0] ^ 1];
+                const w0 = new Int32Array(nOps), Q = nodes[q].p;
+                for (const E of edges) {
+                  if (find(E.u) === r) continue;
+                  const au = F.cmpV(nodes[E.u].p, Q) > 0, av = F.cmpV(nodes[E.v].p, Q) > 0;
+                  if (au === av) continue;
+                  const up = !au;
+                  const s = up ? E.s : -E.s;
+                  if (F.orient(E.X, s, Q) > 0) for (let k = 0; k < nOps; k++) w0[k] += up ? E.delta[k] : -E.delta[k];
+                }
+                W[outer] = w0;
+                const queue = [outer];
+                while (queue.length) {
+                  const f = queue.pop(), wf = W[f];
+                  for (const h of faces[f]) {
+                    const g = face[h ^ 1], E = edges[H[h].e], sg = H[h].sg;
+                    const wg = new Int32Array(nOps);
+                    for (let k = 0; k < nOps; k++) wg[k] = wf[k] - sg * E.delta[k];
+                    if (!W[g]) {
+                      W[g] = wg;
+                      queue.push(g);
+                    } else for (let k = 0; k < nOps; k++) if (W[g][k] !== wg[k]) throw new Error("geokernel.winding: voltes inconsistents (operand " + k + ": " + W[g][k] + " \u2260 " + wg[k] + ") \u2014 algun operand no \xE9s tancat");
+                  }
+                }
+              }
+              return W;
+            }
+            return { windings };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/clean", [], function() {
+            function clean(S, tol) {
+              const { V } = S, seen = /* @__PURE__ */ new Map(), out = [];
+              let degenerate = 0, dupSame = 0, dupOpp = 0;
+              for (const t of S.T) {
+                const [a, b, c] = t;
+                if (a === b || b === c || c === a) {
+                  degenerate++;
+                  continue;
+                }
+                const p = V[a], q = V[b], r = V[c];
+                const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], v = [r[0] - p[0], r[1] - p[1], r[2] - p[2]];
+                const n = Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]);
+                const lmax = Math.max(Math.hypot(...u), Math.hypot(...v), Math.hypot(r[0] - q[0], r[1] - q[1], r[2] - q[2]));
+                if (!(n > 0) || n / lmax < tol * 1e-3) {
+                  degenerate++;
+                  continue;
+                }
+                const s = [a, b, c].sort((x, y) => x - y), k = s.join(",");
+                const rot = (a < b) + (b < c) + (c < a);
+                const prev = seen.get(k);
+                if (!prev) {
+                  seen.set(k, { i: out.length, rot });
+                  out.push(t);
+                  continue;
+                }
+                if (prev.rot === rot) {
+                  dupSame++;
+                  continue;
+                }
+                dupOpp++;
+                out[prev.i] = null;
+                seen.delete(k);
+              }
+              return { V, T: out.filter(Boolean), stats: { degenerate, dupSame, dupOpp } };
+            }
+            return { clean };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/flatVertices", ["2d/triangulate"], function(TR) {
+            function flatVertices(S, tol) {
+              const { V } = S;
+              let T = S.T.map((t) => {
+                const c = t.slice();
+                c.f = t.f;
+                return c;
+              }), removed = 0;
+              for (let pass = 0; pass < 100; pass++) {
+                const inc = /* @__PURE__ */ new Map();
+                T.forEach((t, i) => {
+                  if (t) for (const v of t) {
+                    if (!inc.has(v)) inc.set(v, []);
+                    inc.get(v).push(i);
+                  }
+                });
+                let changed = false;
+                for (const [v, list] of inc) {
+                  const tris = list.filter((i) => T[i] && T[i].includes(v));
+                  if (tris.length < 3) continue;
+                  const f0 = T[tris[0]].f;
+                  if (tris.some((i) => T[i].f !== f0)) continue;
+                  const next = /* @__PURE__ */ new Map();
+                  let bad = false;
+                  for (const i of tris) {
+                    const t = T[i], k2 = t.indexOf(v), a2 = t[(k2 + 1) % 3], b2 = t[(k2 + 2) % 3];
+                    if (next.has(a2)) {
+                      bad = true;
+                      break;
+                    }
+                    next.set(a2, b2);
+                  }
+                  if (bad) continue;
+                  const ring = [];
+                  let cur = next.keys().next().value;
+                  for (let g = 0; g <= tris.length; g++) {
+                    ring.push(cur);
+                    cur = next.get(cur);
+                    if (cur == null) {
+                      bad = true;
+                      break;
+                    }
+                    if (cur === ring[0]) break;
+                  }
+                  if (bad || ring.length !== tris.length) continue;
+                  const n = [0, 0, 0], c = [0, 0, 0];
+                  for (let i = 0; i < ring.length; i++) {
+                    const p = V[ring[i]], q = V[ring[(i + 1) % ring.length]];
+                    n[0] += (p[1] - q[1]) * (p[2] + q[2]);
+                    n[1] += (p[2] - q[2]) * (p[0] + q[0]);
+                    n[2] += (p[0] - q[0]) * (p[1] + q[1]);
+                    for (let k2 = 0; k2 < 3; k2++) c[k2] += p[k2] / ring.length;
+                  }
+                  const nl = Math.hypot(...n);
+                  if (!(nl > 0)) continue;
+                  const u = n.map((x) => x / nl), d = (p) => Math.abs((p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1] + (p[2] - c[2]) * u[2]);
+                  if (d(V[v]) > tol || ring.some((r) => d(V[r]) > tol)) continue;
+                  let k = 0;
+                  if (Math.abs(u[1]) > Math.abs(u[k])) k = 1;
+                  if (Math.abs(u[2]) > Math.abs(u[k])) k = 2;
+                  let a = (k + 1) % 3, b = (k + 2) % 3;
+                  if (u[k] < 0) {
+                    const t = a;
+                    a = b;
+                    b = t;
+                  }
+                  let res;
+                  try {
+                    res = TR.triangulate(ring.map((r) => [V[r][a], V[r][b]]), [], { keepCollinear: true });
+                  } catch (e) {
+                    continue;
+                  }
+                  if (!res.tris.length) continue;
+                  for (const i of tris) T[i] = null;
+                  for (const t of res.tris) {
+                    const nt = [ring[t[0]], ring[t[1]], ring[t[2]]];
+                    nt.f = f0;
+                    T.push(nt);
+                  }
+                  removed++;
+                  changed = true;
+                }
+                T = T.filter(Boolean);
+                if (!changed) break;
+              }
+              return { V, T, stats: { removed } };
+            }
+            return { flatVertices };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/orient", [], function() {
+            function orient(S) {
+              const { V } = S, T = S.T.map((t) => {
+                const c = t.slice();
+                c.f = t.f;
+                return c;
+              });
+              const edges = /* @__PURE__ */ new Map(), ek = (a, b) => a < b ? a + "," + b : b + "," + a;
+              T.forEach((t, i) => {
+                for (let e = 0; e < 3; e++) {
+                  const k = ek(t[e], t[(e + 1) % 3]);
+                  if (!edges.has(k)) edges.set(k, []);
+                  edges.get(k).push(i);
+                }
+              });
+              const has = (t, a, b) => t[0] === a && t[1] === b || t[1] === a && t[2] === b || t[2] === a && t[0] === b;
+              const comp = new Int32Array(T.length).fill(-1);
+              let flipped = 0, componentsFlipped = 0, conflicts = 0, nc = 0;
+              for (let s = 0; s < T.length; s++) {
+                if (comp[s] >= 0) continue;
+                const members = [s];
+                comp[s] = nc;
+                for (let q = 0; q < members.length; q++) {
+                  const t = T[members[q]];
+                  for (let e = 0; e < 3; e++) {
+                    const a = t[e], b = t[(e + 1) % 3], l = edges.get(ek(a, b));
+                    if (l.length !== 2) continue;
+                    const o = l[0] === members[q] ? l[1] : l[0], to = T[o];
+                    const same = has(to, a, b);
+                    if (comp[o] < 0) {
+                      if (same) {
+                        to.reverse();
+                        flipped++;
+                      }
+                      comp[o] = nc;
+                      members.push(o);
+                    } else if (same) conflicts++;
+                  }
+                }
+                let vol = 0;
+                for (const i of members) {
+                  const [p, q, r] = T[i].map((v) => V[v]);
+                  vol += p[0] * (q[1] * r[2] - q[2] * r[1]) - p[1] * (q[0] * r[2] - q[2] * r[0]) + p[2] * (q[0] * r[1] - q[1] * r[0]);
+                }
+                if (vol < 0) {
+                  for (const i of members) T[i].reverse();
+                  componentsFlipped++;
+                }
+                nc++;
+              }
+              return { V, T, stats: { flipped, componentsFlipped, conflicts, components: nc } };
+            }
+            return { orient };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair", ["solids/repair/weld", "solids/repair/clean", "solids/repair/tjunctions", "solids/repair/orient", "solids/repair/flatVertices", "solids/repair/slivers", "solids/validate/mesh", "solids/repair/sheets"], function(W, C, TJ, O, FV, SL, VM, SH) {
+            function repair(mesh, opts) {
+              const r = repairSteps(mesh, opts), vin = VM.check(mesh);
+              const good = (v) => !v.naked && !v.nonManifold && !v.misoriented && !v.degenerate && !v.duplicates;
+              const vout = VM.check(r), worse = vout.naked > vin.naked;
+              if (good(vin) && !good(vout) || worse) return { positions: Float64Array.from(mesh.positions), indices: Uint32Array.from(mesh.indices), faceOf: mesh.faceOf ? Int32Array.from(mesh.faceOf) : void 0, stats: Object.assign({ kept: "l'entrada ja era bona i la reparaci\xF3 l'empitjorava" }, r.stats) };
+              return r;
+            }
+            function repairSteps(mesh, opts) {
+              const tol = opts && opts.tol || 1e-4;
+              let S = W.weld(mesh, tol);
+              const s0 = SH.sheets(S, tol);
+              S = s0;
+              const s1 = C.clean(S, tol);
+              S = s1;
+              const nakedIdx = (X) => {
+                const c = /* @__PURE__ */ new Map();
+                for (const t of X.T) for (let q = 0; q < 3; q++) {
+                  const a = t[q], b = t[(q + 1) % 3];
+                  if (a === b) continue;
+                  const k = a < b ? a + "," + b : b + "," + a;
+                  c.set(k, (c.get(k) || 0) + 1);
+                }
+                let n = 0;
+                for (const v of c.values()) if (v === 1) n++;
+                return n;
+              };
+              const s2 = nakedIdx(S) ? TJ.tjunctions(S, tol) : { V: S.V, T: S.T, stats: { split: 0, skipped: "sense arestes nues" } };
+              S = s2;
+              const s3 = C.clean(S, tol);
+              S = s3;
+              const s35 = SL.slivers(S, tol);
+              S = s35;
+              const s4 = O.orient(S);
+              S = s4;
+              const holes = (X) => {
+                const c = /* @__PURE__ */ new Map();
+                for (const t of X.T) for (let q = 0; q < 3; q++) {
+                  const a = t[q], b = t[(q + 1) % 3];
+                  if (a === b) continue;
+                  const k = a < b ? a + "," + b : b + "," + a;
+                  c.set(k, (c.get(k) || 0) + 1);
+                }
+                let n = 0, m2 = 0;
+                for (const v of c.values()) {
+                  if (v === 1) n++;
+                  else if (v > 2) m2++;
+                }
+                return [n, m2];
+              };
+              const h4 = holes(S), s5t = FV.flatVertices(S, tol), h5 = holes(s5t);
+              const s5 = h5[0] > h4[0] || h5[0] === h4[0] && h5[1] > h4[1] ? { V: S.V, T: S.T, stats: { removed: 0, skipped: "empitjorava" } } : s5t;
+              S = s5;
+              const s6 = SH.sheets(S, tol);
+              S = { V: s6.V, T: s6.T };
+              const positions = new Float64Array(S.V.length * 3);
+              S.V.forEach((p, i) => {
+                positions[3 * i] = p[0];
+                positions[3 * i + 1] = p[1];
+                positions[3 * i + 2] = p[2];
+              });
+              const indices = new Uint32Array(S.T.length * 3);
+              S.T.forEach((t, i) => {
+                indices[3 * i] = t[0];
+                indices[3 * i + 1] = t[1];
+                indices[3 * i + 2] = t[2];
+              });
+              const faceOf = S.T.length && S.T.every((t) => t.f != null) ? Int32Array.from(S.T.map((t) => t.f)) : void 0;
+              return { positions, indices, faceOf, stats: { sheets: s0.stats, clean: s1.stats, tjunctions: s2.stats, clean2: s3.stats, slivers: s35.stats, orient: s4.stats, flatVertices: s5.stats, sheets2: s6.stats } };
+            }
+            return { repair };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/sheets", [], function() {
+            function sheets(S, tol) {
+              const { V } = S, T = S.T;
+              const info = T.map((t) => {
+                const a = V[t[0]], b = V[t[1]], c = V[t[2]];
+                const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+                let n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+                const L = Math.hypot(n[0], n[1], n[2]);
+                if (!(L > 0)) return null;
+                n = n.map((x) => x / L);
+                let k = 0;
+                if (Math.abs(n[1]) > Math.abs(n[k])) k = 1;
+                if (Math.abs(n[2]) > Math.abs(n[k])) k = 2;
+                const s = n[k] > 0 ? 1 : -1, m2 = n.map((x) => x * s), d = m2[0] * a[0] + m2[1] * a[1] + m2[2] * a[2];
+                return { key: m2.map((x) => Math.round(x * 1e6)).join(",") + "|" + Math.round(d / tol), s };
+              });
+              const byPlane = /* @__PURE__ */ new Map();
+              T.forEach((t, ti) => {
+                const f = info[ti];
+                if (!f) return;
+                if (!byPlane.has(f.key)) byPlane.set(f.key, []);
+                byPlane.get(f.key).push(ti);
+              });
+              const remove = /* @__PURE__ */ new Set();
+              const ek = (u, v) => u + "," + v;
+              for (const tis of byPlane.values()) {
+                if (tis.length < 2) continue;
+                const sides = new Set(tis.map((ti) => info[ti].s));
+                if (sides.size < 2) continue;
+                const seen = /* @__PURE__ */ new Map(), layer = /* @__PURE__ */ new Map();
+                for (const ti of tis) {
+                  const k = [...T[ti]].sort((x, y) => x - y).join(",") + "|" + info[ti].s;
+                  const n = seen.get(k) || 0;
+                  seen.set(k, n + 1);
+                  layer.set(ti, n);
+                }
+                const groups = /* @__PURE__ */ new Map();
+                for (const ti of tis) {
+                  const g = info[ti].s + ":" + layer.get(ti);
+                  if (!groups.has(g)) groups.set(g, []);
+                  groups.get(g).push(ti);
+                }
+                const patches = [];
+                for (const [g, list] of groups) {
+                  const uf = new Map(list.map((ti) => [ti, ti])), find = (x) => {
+                    while (uf.get(x) !== x) {
+                      uf.set(x, uf.get(uf.get(x)));
+                      x = uf.get(x);
+                    }
+                    return x;
+                  };
+                  const byEdge = /* @__PURE__ */ new Map();
+                  for (const ti of list) for (let q = 0; q < 3; q++) {
+                    const a = T[ti][q], b = T[ti][(q + 1) % 3], k = a < b ? a + "," + b : b + "," + a;
+                    if (byEdge.has(k)) uf.set(find(ti), find(byEdge.get(k)));
+                    else byEdge.set(k, ti);
+                  }
+                  const comp = /* @__PURE__ */ new Map();
+                  for (const ti of list) {
+                    const r = find(ti);
+                    if (!comp.has(r)) comp.set(r, []);
+                    comp.get(r).push(ti);
+                  }
+                  for (const c of comp.values()) {
+                    const cnt = /* @__PURE__ */ new Map();
+                    for (const ti of c) for (let q = 0; q < 3; q++) {
+                      const a = T[ti][q], b = T[ti][(q + 1) % 3];
+                      const r = ek(b, a);
+                      if (cnt.get(r) > 0) cnt.set(r, cnt.get(r) - 1);
+                      else cnt.set(ek(a, b), (cnt.get(ek(a, b)) || 0) + 1);
+                    }
+                    const bd = [...cnt.entries()].filter(([, n]) => n > 0).map(([k]) => k).sort();
+                    const rev = bd.map((k) => {
+                      const [a, b] = k.split(",");
+                      return ek(b, a);
+                    }).sort();
+                    patches.push({ s: +g.split(":")[0], tris: c, bd: bd.join(" "), rev: rev.join(" "), used: false });
+                  }
+                }
+                for (const p of patches) {
+                  if (p.used || p.s !== 1 || !p.bd) continue;
+                  const q = patches.find((x) => !x.used && x.s === -1 && x.bd === p.rev);
+                  if (!q) continue;
+                  p.used = q.used = true;
+                  for (const ti of p.tris) remove.add(ti);
+                  for (const ti of q.tris) remove.add(ti);
+                }
+              }
+              const out = [];
+              T.forEach((t, ti) => {
+                if (!remove.has(ti)) out.push(t);
+              });
+              return { V, T: out, stats: { cancelled: remove.size } };
+            }
+            return { sheets };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/slivers", [], function() {
+            function slivers(S, tol) {
+              const { V } = S, T = S.T.map((t) => {
+                const c = t.slice();
+                c.f = t.f;
+                return c;
+              });
+              const und = /* @__PURE__ */ new Map(), owner = /* @__PURE__ */ new Map();
+              T.forEach((t, ti) => {
+                for (let k = 0; k < 3; k++) {
+                  const a = t[k], b = t[(k + 1) % 3], u = a < b ? a + "," + b : b + "," + a;
+                  und.set(u, (und.get(u) || 0) + 1);
+                  owner.set(a + "," + b, ti);
+                }
+              });
+              const next = /* @__PURE__ */ new Map(), amb = /* @__PURE__ */ new Set();
+              for (const [key] of owner) {
+                const [a, b] = key.split(",").map(Number);
+                if (und.get(a < b ? key : b + "," + a) !== 1) continue;
+                if (next.has(a)) amb.add(a);
+                next.set(a, b);
+              }
+              const seen = /* @__PURE__ */ new Set();
+              let filled = 0;
+              const sub = (p, q) => [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+              for (const start of next.keys()) {
+                if (seen.has(start) || amb.has(start)) continue;
+                const cyc = [];
+                let v = start, ok = true;
+                while (true) {
+                  if (amb.has(v) || !next.has(v) || cyc.length > 8) {
+                    ok = false;
+                    break;
+                  }
+                  cyc.push(v);
+                  v = next.get(v);
+                  if (v === start) break;
+                  if (cyc.includes(v)) {
+                    ok = false;
+                    break;
+                  }
+                }
+                cyc.forEach((x) => seen.add(x));
+                if (!ok || cyc.length < 3) continue;
+                const n = [0, 0, 0];
+                let longest = 0, li = 0;
+                for (let i = 0; i < cyc.length; i++) {
+                  const p = V[cyc[i]], q = V[cyc[(i + 1) % cyc.length]];
+                  n[0] += p[1] * q[2] - p[2] * q[1];
+                  n[1] += p[2] * q[0] - p[0] * q[2];
+                  n[2] += p[0] * q[1] - p[1] * q[0];
+                  const l = Math.hypot(...sub(q, p));
+                  if (l > longest) {
+                    longest = l;
+                    li = i;
+                  }
+                }
+                const area = Math.hypot(...n) / 2;
+                if (!(longest > 0) || 2 * area / longest > 10 * tol) continue;
+                const f = T[owner.get(cyc[li] + "," + cyc[(li + 1) % cyc.length])].f;
+                for (let i = 1; i + 1 < cyc.length; i++) {
+                  const t = [cyc[0], cyc[i + 1], cyc[i]];
+                  t.f = f;
+                  T.push(t);
+                }
+                filled++;
+              }
+              return { V, T, stats: { filled } };
+            }
+            return { slivers };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/tjunctions", [], function() {
+            function tjunctions(S, tol) {
+              const { V } = S;
+              let T = S.T.slice(), split = 0;
+              const limit = 20 * T.length + 1e4;
+              let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+              for (const p of V) for (let k = 0; k < 3; k++) {
+                lo[k] = Math.min(lo[k], p[k]);
+                hi[k] = Math.max(hi[k], p[k]);
+              }
+              const used = /* @__PURE__ */ new Set();
+              for (const t of T) for (const v of t) used.add(v);
+              const span = Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], tol);
+              const cell = Math.max(span / Math.max(1, Math.cbrt(used.size) * 2), tol * 4);
+              const grid = /* @__PURE__ */ new Map(), ci = (x, k) => Math.floor((x - lo[k]) / cell), gk = (i, j, k) => i + "," + j + "," + k;
+              for (const v of used) {
+                const p = V[v], k = gk(ci(p[0], 0), ci(p[1], 1), ci(p[2], 2));
+                if (!grid.has(k)) grid.set(k, []);
+                grid.get(k).push(v);
+              }
+              function onEdge(a, b) {
+                const A = V[a], B = V[b], d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], L2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+                if (!(L2 > 0)) return [];
+                const res = [], eps = tol / Math.sqrt(L2) * 1e-3;
+                const r = [0, 1, 2].map((k) => [ci(Math.min(A[k], B[k]) - tol, k), ci(Math.max(A[k], B[k]) + tol, k)]);
+                for (let i = r[0][0]; i <= r[0][1]; i++) for (let j = r[1][0]; j <= r[1][1]; j++) for (let k = r[2][0]; k <= r[2][1]; k++) {
+                  const l = grid.get(gk(i, j, k));
+                  if (!l) continue;
+                  for (const v of l) {
+                    if (v === a || v === b) continue;
+                    const p = V[v], t = ((p[0] - A[0]) * d[0] + (p[1] - A[1]) * d[1] + (p[2] - A[2]) * d[2]) / L2;
+                    if (t <= eps || t >= 1 - eps) continue;
+                    const x = A[0] + t * d[0] - p[0], y = A[1] + t * d[1] - p[1], z = A[2] + t * d[2] - p[2];
+                    if (x * x + y * y + z * z <= tol * tol) res.push([t, v]);
+                  }
+                }
+                return res.sort((x, y) => x[0] - y[0]).map((x) => x[1]);
+              }
+              let cleanPrev = /* @__PURE__ */ new Set();
+              for (let pass = 0; pass < 20; pass++) {
+                const out = [];
+                let changed = false;
+                const clean = /* @__PURE__ */ new Set();
+                for (const t of T) {
+                  if (cleanPrev.has(t)) {
+                    out.push(t);
+                    clean.add(t);
+                    continue;
+                  }
+                  let done = false;
+                  for (let e = 0; e < 3 && !done; e++) {
+                    const a = t[e], b = t[(e + 1) % 3], c = t[(e + 2) % 3], pts = onEdge(a, b);
+                    if (!pts.length) continue;
+                    const chain = [a, ...pts, b];
+                    for (let i = 0; i + 1 < chain.length; i++) {
+                      const nt = [chain[i], chain[i + 1], c];
+                      nt.f = t.f;
+                      out.push(nt);
+                    }
+                    split += pts.length;
+                    done = true;
+                    changed = true;
+                  }
+                  if (!done) {
+                    out.push(t);
+                    clean.add(t);
+                  }
+                }
+                T = out;
+                cleanPrev = clean;
+                if (T.length > limit) throw new Error("geokernel.tjunctions: els triangles creixen sense l\xEDmit (" + S.T.length + " \u2192 " + T.length + ")");
+                if (!changed) break;
+              }
+              return { V, T, stats: { split } };
+            }
+            return { tjunctions };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/repair/weld", [], function() {
+            function weld(mesh, tol) {
+              const P = mesh.positions, I = mesh.indices, V = [], grid = /* @__PURE__ */ new Map(), map = new Int32Array(P.length / 3);
+              const cell = (x) => Math.floor(x / tol), key = (i, j, k) => Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(k, 83492791) | 0, t2 = tol * tol, vc = [];
+              for (let n = 0; n < P.length / 3; n++) {
+                const x = P[3 * n], y = P[3 * n + 1], z = P[3 * n + 2];
+                if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) throw new Error("geokernel.weld: coordenada no finita al v\xE8rtex " + n);
+                const ci = cell(x), cj = cell(y), ck = cell(z);
+                let found = -1;
+                for (let a = -1; a <= 1 && found < 0; a++) for (let b = -1; b <= 1 && found < 0; b++) for (let c = -1; c <= 1 && found < 0; c++) {
+                  const I2 = ci + a, J = cj + b, K = ck + c, l = grid.get(key(I2, J, K));
+                  if (!l) continue;
+                  for (const v of l) {
+                    const q = vc[v];
+                    if (q[0] !== I2 || q[1] !== J || q[2] !== K) continue;
+                    const p = V[v], dx = p[0] - x, dy = p[1] - y, dz = p[2] - z;
+                    if (dx * dx + dy * dy + dz * dz <= t2) {
+                      found = v;
+                      break;
+                    }
+                  }
+                }
+                if (found < 0) {
+                  found = V.length;
+                  V.push([x, y, z]);
+                  vc.push([ci, cj, ck]);
+                  const k = key(ci, cj, ck);
+                  if (!grid.has(k)) grid.set(k, []);
+                  grid.get(k).push(found);
+                }
+                map[n] = found;
+              }
+              const T = [];
+              const FO = mesh.faceOf;
+              for (let t = 0; t < I.length; t += 3) {
+                const tri = [map[I[t]], map[I[t + 1]], map[I[t + 2]]];
+                if (FO) tri.f = FO[t / 3];
+                T.push(tri);
+              }
+              return { V, T };
+            }
+            return { weld };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/section", ["solids/point"], function(PT) {
+            function section(S, P, side, F) {
+              const T = S.T, sv = new Int8Array(S.verts.length), pv = new Int8Array(S.verts.length);
+              S.verts.forEach((v, i) => {
+                const s = PT.side(T, P, v);
+                sv[i] = s;
+                pv[i] = s !== 0 ? s : -side;
+              });
+              const out = [];
+              S.faces.forEach((g, gi) => {
+                if (g.plane === P) return;
+                const cuts = [];
+                g.loops.forEach((L, li) => {
+                  const E = g.epl[li];
+                  for (let i = 0; i < L.length; i++) {
+                    const u = L[i], w = L[(i + 1) % L.length];
+                    if (pv[u] === pv[w]) continue;
+                    let c;
+                    if (sv[u] === 0) c = S.verts[u];
+                    else if (sv[w] === 0) c = S.verts[w];
+                    else {
+                      c = PT.make(T, P, g.plane, E[i]);
+                      if (!c) throw new Error("geokernel.section: l'aresta " + u + "\u2192" + w + " de la cara " + gi + " creua P per\xF2 \xE9s paral\xB7lela al pla");
+                    }
+                    cuts.push(c);
+                  }
+                });
+                if (!cuts.length) return;
+                if (cuts.length % 2) throw new Error("geokernel.section: la cara " + gi + " talla el pla " + P + " un nombre senar de vegades (" + cuts.length + ")");
+                cuts.sort(F.lex);
+                if (F.lexIncreasing(g.plane) !== g.sign > 0) cuts.reverse();
+                for (let i = 0; i < cuts.length; i += 2) {
+                  const a = cuts[i], b = cuts[i + 1];
+                  if (PT.equal(a, b)) continue;
+                  out.push({ a, b, X: g.plane, s: g.sign });
+                }
+              });
+              return out;
+            }
+            return { section };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("solids/validate/mesh", [], function() {
+            function check(mesh, opts) {
+              opts = opts || {};
+              const weld = opts.weld || 1e-4, tj = opts.tjunction || 2e-4;
+              const P = mesh.positions, I = mesh.indices;
+              const keyOf = /* @__PURE__ */ new Map(), wid = new Int32Array(P.length / 3), wpos = [];
+              for (let i = 0; i < P.length / 3; i++) {
+                const k = Math.round(P[3 * i] / weld) + "," + Math.round(P[3 * i + 1] / weld) + "," + Math.round(P[3 * i + 2] / weld);
+                let id = keyOf.get(k);
+                if (id == null) {
+                  id = wpos.length;
+                  keyOf.set(k, id);
+                  wpos.push([P[3 * i], P[3 * i + 1], P[3 * i + 2]]);
+                }
+                wid[i] = id;
+              }
+              const edges = /* @__PURE__ */ new Map(), tris = /* @__PURE__ */ new Map();
+              let degenerate = 0, duplicates = 0, volume = 0, area = 0;
+              for (let t = 0; t < I.length; t += 3) {
+                const a = wid[I[t]], b = wid[I[t + 1]], c = wid[I[t + 2]];
+                const p = wpos[a], q = wpos[b], r = wpos[c];
+                const ux = q[0] - p[0], uy = q[1] - p[1], uz = q[2] - p[2], vx = r[0] - p[0], vy = r[1] - p[1], vz = r[2] - p[2];
+                const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+                area += Math.hypot(cx, cy, cz) / 2;
+                const A = 3 * I[t], B = 3 * I[t + 1], C = 3 * I[t + 2];
+                volume += (P[A] * (P[B + 1] * P[C + 2] - P[B + 2] * P[C + 1]) - P[A + 1] * (P[B] * P[C + 2] - P[B + 2] * P[C]) + P[A + 2] * (P[B] * P[C + 1] - P[B + 1] * P[C])) / 6;
+                if (a === b || b === c || c === a) {
+                  degenerate++;
+                  continue;
+                }
+                const tk = [a, b, c].sort((x, y) => x - y).join(",");
+                if (tris.has(tk)) duplicates++;
+                else tris.set(tk, 1);
+                for (const [u, w] of [[a, b], [b, c], [c, a]]) {
+                  const k = u < w ? u + "," + w : w + "," + u;
+                  let e = edges.get(k);
+                  if (!e) {
+                    e = { n: 0, fwd: 0, u: Math.min(u, w), w: Math.max(u, w) };
+                    edges.set(k, e);
+                  }
+                  e.n++;
+                  if (u < w) e.fwd++;
+                }
+              }
+              let naked = 0, nonManifold = 0, misoriented = 0;
+              const nakedList = [], nakedVerts = /* @__PURE__ */ new Set();
+              for (const e of edges.values()) {
+                if (e.n === 1) {
+                  naked++;
+                  nakedList.push(e);
+                  nakedVerts.add(e.u);
+                  nakedVerts.add(e.w);
+                } else if (e.n > 2) nonManifold++;
+                else if (e.fwd !== 1) misoriented++;
+              }
+              let tjunctions = 0;
+              if (naked && naked < 2e4) {
+                for (const e of nakedList) {
+                  const a = wpos[e.u], b = wpos[e.w], d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+                  if (!(L2 > 0)) continue;
+                  for (const v of nakedVerts) {
+                    if (v === e.u || v === e.w) continue;
+                    const p = wpos[v], t = ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1] + (p[2] - a[2]) * d[2]) / L2;
+                    if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+                    const x = a[0] + t * d[0] - p[0], y = a[1] + t * d[1] - p[1], z = a[2] + t * d[2] - p[2];
+                    if (Math.hypot(x, y, z) < tj) {
+                      tjunctions++;
+                      break;
+                    }
+                  }
+                }
+              }
+              const res = { triangles: I.length / 3, vertices: wpos.length, naked, nonManifold, misoriented, degenerate, duplicates, tjunctions, volume, area };
+              res.closed = naked === 0 && nonManifold === 0;
+              if (opts.expected != null) res.volumeOk = Math.abs(volume - opts.expected) <= 1e-4 * Math.max(1, Math.abs(opts.expected));
+              res.ok = res.closed && misoriented === 0 && res.volumeOk !== false;
+              return res;
+            }
+            return { check };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function(def) {
+          def("formats/mctx", [], function() {
+            function bytesOf(src) {
+              if (typeof src !== "string") return src instanceof Uint8Array ? src : new Uint8Array(src);
+              const bin = typeof atob === "function" ? atob(src.trim()) : Buffer.from(src.trim(), "base64").toString("binary");
+              const u = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+              return u;
+            }
+            function parse(src) {
+              const u = bytesOf(src), dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+              if (String.fromCharCode(u[0], u[1], u[2], u[3]) !== "MCTX") throw new Error("geokernel.mctx: no comen\xE7a per MCTX");
+              const version = dv.getUint32(4, true), nPieces = dv.getUint32(8, true), nVerts = dv.getUint32(12, true), nIdx = dv.getUint32(16, true);
+              if (version !== 1) throw new Error("geokernel.mctx: versi\xF3 " + version + " desconeguda");
+              const tbl = 24, posAt = tbl + 168 * nPieces, idxAt = posAt + 12 * nVerts;
+              if (idxAt + 4 * nIdx > u.byteLength) throw new Error("geokernel.mctx: fitxer truncat (" + u.byteLength + " B, calen " + (idxAt + 4 * nIdx) + ")");
+              const pieces = [];
+              for (let k = 0; k < nPieces; k++) {
+                const o = tbl + 168 * k, g = (i) => dv.getUint32(o + i, true);
+                const vo = g(8), vc = g(12), io = g(16), ic = g(20);
+                const positions = new Float32Array(vc * 3), indices = new Uint32Array(ic), matrix = new Array(16);
+                for (let i = 0; i < vc * 3; i++) positions[i] = dv.getFloat32(posAt + 4 * (3 * vo + i), true);
+                for (let i = 0; i < ic; i++) indices[i] = dv.getUint32(idxAt + 4 * (io + i), true);
+                for (let i = 0; i < 16; i++) matrix[i] = dv.getFloat64(o + 40 + 8 * i, true);
+                pieces.push({ expressID: g(0), geometryExpressID: g(4), color: [0, 1, 2, 3].map((i) => dv.getFloat32(o + 24 + 4 * i, true)), matrix, positions, indices });
+              }
+              return { version, pieces, nVerts, nIndices: nIdx };
+            }
+            function toModel(P, M) {
+              const out = new Float64Array(P.length);
+              for (let i = 0; i < P.length; i += 3) {
+                const x = P[i], y = P[i + 1], z = P[i + 2];
+                out[i] = M[0] * x + M[4] * y + M[8] * z + M[12];
+                out[i + 1] = M[1] * x + M[5] * y + M[9] * z + M[13];
+                out[i + 2] = M[2] * x + M[6] * y + M[10] * z + M[14];
+              }
+              return out;
+            }
+            return { parse, toModel };
+          });
+        })((function() {
+          var g = typeof globalThis !== "undefined" ? globalThis : self, k = typeof host !== "undefined" && host || g, m2 = g.__geokernel || (g.__geokernel = /* @__PURE__ */ new WeakMap());
+          if (!m2.has(k)) m2.set(k, {});
+          var R = m2.get(k);
+          return function(n, d, f) {
+            R[n] = { deps: d, f };
+          };
+        })());
+        (function() {
+          const g = typeof globalThis !== "undefined" ? globalThis : self;
+          const key = typeof host !== "undefined" && host || g;
+          const R = g.__geokernel && g.__geokernel.get(key) || {};
+          const cache = {}, loading = {};
+          function use(name) {
+            if (cache[name]) return cache[name];
+            const p = R[name];
+            if (!p) throw new Error("geokernel: falta la pe\xE7a \xAB" + name + "\xBB");
+            if (loading[name]) throw new Error("geokernel: depend\xE8ncia circular a \xAB" + name + "\xBB");
+            loading[name] = true;
+            const deps = p.deps.map(use);
+            cache[name] = p.f.apply(null, deps);
+            delete loading[name];
+            return cache[name];
+          }
+          const api = {
+            version: "0.10.0",
+            // s'incrementa a cada canvi del motor que es lliura a WEB-IFC (dist/geokernel.js)
+            use,
+            // accés a qualsevol peça pel seu nom: use('solids/plane')
+            pieces: () => Object.keys(R).sort(),
+            formats: { mctx: use("formats/mctx") },
+            d2: {
+              triangulate: Object.assign({}, use("2d/triangulate"), use("2d/triangulate/region"))
+            },
+            solids: {
+              bigint: use("solids/exact/bigint"),
+              sign: use("solids/exact/sign"),
+              plane: use("solids/plane"),
+              snap: use("solids/plane/snap"),
+              point: use("solids/point"),
+              fromMesh: use("solids/brep/fromMesh").fromMesh,
+              toMesh: use("solids/brep/toMesh").toMesh,
+              check: use("solids/brep/check").check,
+              validate: use("solids/validate/mesh").check,
+              repair: use("solids/repair").repair,
+              make: Object.assign({}, use("solids/make/box"), use("solids/make/transform"), use("solids/make/oracle")),
+              frame: use("solids/plane2d/frame").frame,
+              section: use("solids/section").section,
+              boolean: use("solids/boolean").boolean,
+              booleanMesh: use("solids/boolean/mesh").booleanMesh,
+              chainMesh: use("solids/boolean/chainMesh").chainMesh,
+              diag: Object.assign({}, use("solids/diag/chain"), use("solids/diag/shapes3d"), use("solids/diag/shapes2d"), use("solids/diag/draw"), use("solids/diag/apex"), use("solids/diag/vertex"), use("solids/diag/ifcScene"))
+            }
+          };
+          api.booleanMesh = api.solids.booleanMesh;
+          api.chainMesh = api.solids.chainMesh;
+          api.webifcBool = use("solids/boolean/webifc").webifcBool;
+          api.webifcBoolStats = use("solids/boolean/webifc").webifcBoolStats;
+          if (typeof module3 !== "undefined") module3.exports = api;
+          if (typeof host !== "undefined" && host && typeof host.provide === "function") {
+            host.provide("geokernelCore", api);
+            host.provide("geokernel", Object.assign({}, api), { heavy: ["booleanMesh", "chainMesh"] });
+          }
+        })();
+      })(m, m.exports, void 0);
+      root.geokernel = m.exports;
+      if (typeof module2 === "object" && module2 && module2.exports) module2.exports = m.exports;
+    })(typeof globalThis !== "undefined" ? globalThis : self);
+  }
+});
+
 // dist/web-ifc-mt.js
 var require_web_ifc_mt = __commonJS({
   "dist/web-ifc-mt.js"(exports2, module2) {
@@ -199,7 +4458,7 @@ var require_web_ifc_mt = __commonJS({
           if (ENVIRONMENT_IS_PTHREAD) return startWorker();
           if (!Module["noFSInit"] && !FS.initialized) FS.init();
           TTY.init();
-          wasmExports["ja"]();
+          wasmExports["pa"]();
           FS.ignorePermissions = false;
         }
         function postRun() {
@@ -282,7 +4541,7 @@ var require_web_ifc_mt = __commonJS({
           function receiveInstance(instance2, module3) {
             wasmExports = instance2.exports;
             wasmExports = applySignatureConversions(wasmExports);
-            registerTLSInit(wasmExports["pa"]);
+            registerTLSInit(wasmExports["va"]);
             assignWasmExports(wasmExports);
             wasmModule = module3;
             return wasmExports;
@@ -1977,6 +6236,13 @@ var require_web_ifc_mt = __commonJS({
         }
         function __emscripten_thread_set_strongref(thread) {
           thread >>>= 0;
+        }
+        function __emval_array_to_memory_view(dst, src) {
+          dst >>>= 0;
+          src >>>= 0;
+          dst = Emval.toValue(dst);
+          src = Emval.toValue(src);
+          dst.set(src);
         }
         var emval_methodCallers = [];
         var emval_addMethodCaller = (caller) => {
@@ -4245,41 +8511,114 @@ var require_web_ifc_mt = __commonJS({
           }
         }
         var proxiedFunctionTable = [_proc_exit, exitOnMainThread, __setitimer_js, _environ_get, _environ_sizes_get, _fd_close, _fd_fdstat_get, _fd_read, _fd_seek, _fd_write];
+        function morph_bool_present() {
+          return typeof globalThis.__morphBool === "function" ? 1 : 0;
+        }
+        function morph_reserve_stat(kind) {
+          var st = globalThis.__morphBoolStats || (globalThis.__morphBoolStats = { calls: 0, ok: 0, fallback: 0, ms: 0, lastError: "" });
+          var k = ["chainsChecked", "chainsOpen", "geokernelFails", "chainsRedone", "chainsKeptGeokernel", "chainsKeptWebifc"][kind];
+          st[k] = (st[k] || 0) + 1;
+        }
+        function morph_bool_call(opCode, ap, an, ai, ain, bp, bn, bi, bin, unitToMetre) {
+          var fn = globalThis.__morphBool;
+          var st = globalThis.__morphBoolStats || (globalThis.__morphBoolStats = { calls: 0, ok: 0, fallback: 0, ms: 0, lastError: "" });
+          if (typeof fn !== "function") return -1;
+          st.calls++;
+          var t0 = (typeof performance !== "undefined" ? performance : Date).now();
+          try {
+            var A = { positions: (growMemViews(), HEAPF64).slice(ap >>> 3, (ap >>> 3) + an), indices: (growMemViews(), HEAPU32).slice(ai >>> 2, (ai >>> 2) + ain) };
+            var pv = globalThis.__morphBoolPrev;
+            if (pv && pv.exp.length === A.positions.length) {
+              var same = true;
+              for (var q = 0; q < A.positions.length; q++) {
+                var x = pv.exp[q];
+                if (Math.abs(A.positions[q] - x) > 1e-9 * (1 + Math.abs(x))) {
+                  same = false;
+                  break;
+                }
+              }
+              for (var q2 = 0; same && q2 < A.indices.length; q2++) if (A.indices[q2] !== q2) same = false;
+              if (same) {
+                A = pv.res;
+                st.reusedA = (st.reusedA || 0) + 1;
+              }
+            }
+            var B = { positions: (growMemViews(), HEAPF64).slice(bp >>> 3, (bp >>> 3) + bn), indices: (growMemViews(), HEAPU32).slice(bi >>> 2, (bi >>> 2) + bin) };
+            var r = fn(opCode === 1 ? "UNION" : "DIFFERENCE", A, B, { unitToMetre });
+            st.ms += (typeof performance !== "undefined" ? performance : Date).now() - t0;
+            if (!r || !r.positions || !r.indices || r.indices.length % 3 !== 0) {
+              st.fallback++;
+              st.lastError = "bad result";
+              return -2;
+            }
+            var nv = r.positions.length / 3;
+            for (var k = 0; k < r.indices.length; k++) if (!(r.indices[k] < nv)) {
+              st.fallback++;
+              st.lastError = "index out of range";
+              return -2;
+            }
+            globalThis.__morphBoolLast = r;
+            st.ok++;
+            return r.indices.length;
+          } catch (e) {
+            st.ms += (typeof performance !== "undefined" ? performance : Date).now() - t0;
+            st.fallback++;
+            st.lastError = String(e && e.message || e).slice(0, 300);
+            return -3;
+          }
+        }
+        function morph_bool_npos() {
+          return globalThis.__morphBoolLast.positions.length;
+        }
+        function morph_bool_take(pos, idx) {
+          var r = globalThis.__morphBoolLast;
+          globalThis.__morphBoolLast = null;
+          (growMemViews(), HEAPF64).set(r.positions instanceof Float64Array ? r.positions : Float64Array.from(r.positions), pos >>> 3 >>> 0);
+          (growMemViews(), HEAPU32).set(r.indices instanceof Uint32Array ? r.indices : Uint32Array.from(r.indices), idx >>> 2 >>> 0);
+          var e = new Float64Array(r.indices.length * 3);
+          for (var t = 0; t < r.indices.length; t++) {
+            var v = r.indices[t] * 3;
+            e[3 * t] = r.positions[v];
+            e[3 * t + 1] = r.positions[v + 1];
+            e[3 * t + 2] = r.positions[v + 2];
+          }
+          globalThis.__morphBoolPrev = { res: r, exp: e };
+        }
         var ___getTypeName, __embind_initialize_bindings, _malloc, _free, _pthread_self, __emscripten_tls_init, __emscripten_thread_init, __emscripten_thread_crashed, __emscripten_run_js_on_main_thread, __emscripten_thread_free_data, __emscripten_thread_exit, __emscripten_timeout, __emscripten_check_mailbox, ___trap, _emscripten_stack_set_limits, __emscripten_stack_restore, __emscripten_stack_alloc, _emscripten_stack_get_current, __indirect_function_table, wasmTable;
         function assignWasmExports(wasmExports2) {
-          ___getTypeName = wasmExports2["ka"];
-          __embind_initialize_bindings = wasmExports2["la"];
-          _malloc = wasmExports2["ma"];
-          _free = wasmExports2["na"];
-          _pthread_self = wasmExports2["oa"];
-          __emscripten_tls_init = wasmExports2["pa"];
-          __emscripten_thread_init = wasmExports2["qa"];
-          __emscripten_thread_crashed = wasmExports2["ra"];
-          __emscripten_run_js_on_main_thread = wasmExports2["ta"];
-          __emscripten_thread_free_data = wasmExports2["ua"];
-          __emscripten_thread_exit = wasmExports2["va"];
-          __emscripten_timeout = wasmExports2["wa"];
-          __emscripten_check_mailbox = wasmExports2["xa"];
-          ___trap = wasmExports2["ya"];
-          _emscripten_stack_set_limits = wasmExports2["za"];
-          __emscripten_stack_restore = wasmExports2["Aa"];
-          __emscripten_stack_alloc = wasmExports2["Ba"];
-          _emscripten_stack_get_current = wasmExports2["Ca"];
-          __indirect_function_table = wasmTable = wasmExports2["sa"];
+          ___getTypeName = wasmExports2["qa"];
+          __embind_initialize_bindings = wasmExports2["ra"];
+          _malloc = wasmExports2["sa"];
+          _free = wasmExports2["ta"];
+          _pthread_self = wasmExports2["ua"];
+          __emscripten_tls_init = wasmExports2["va"];
+          __emscripten_thread_init = wasmExports2["wa"];
+          __emscripten_thread_crashed = wasmExports2["xa"];
+          __emscripten_run_js_on_main_thread = wasmExports2["za"];
+          __emscripten_thread_free_data = wasmExports2["Aa"];
+          __emscripten_thread_exit = wasmExports2["Ba"];
+          __emscripten_timeout = wasmExports2["Ca"];
+          __emscripten_check_mailbox = wasmExports2["Da"];
+          ___trap = wasmExports2["Ea"];
+          _emscripten_stack_set_limits = wasmExports2["Fa"];
+          __emscripten_stack_restore = wasmExports2["Ga"];
+          __emscripten_stack_alloc = wasmExports2["Ha"];
+          _emscripten_stack_get_current = wasmExports2["Ia"];
+          __indirect_function_table = wasmTable = wasmExports2["ya"];
         }
         var wasmImports;
         function assignWasmImports() {
-          wasmImports = { O: __abort_js, H: __embind_finalize_value_array, l: __embind_finalize_value_object, G: __embind_register_bigint, ga: __embind_register_bool, n: __embind_register_class, m: __embind_register_class_constructor, c: __embind_register_class_function, ea: __embind_register_emval, F: __embind_register_float, g: __embind_register_function, w: __embind_register_integer, o: __embind_register_memory_view, s: __embind_register_optional, fa: __embind_register_std_string, B: __embind_register_std_wstring, ia: __embind_register_value_array, p: __embind_register_value_array_element, q: __embind_register_value_object, i: __embind_register_value_object_field, ha: __embind_register_void, _: __emscripten_init_main_thread_js, Q: __emscripten_notify_mailbox_postmessage, V: __emscripten_receive_on_main_thread_js, J: __emscripten_runtime_keepalive_clear, D: __emscripten_thread_cleanup, Z: __emscripten_thread_mailbox_await, da: __emscripten_thread_set_strongref, f: __emval_create_invoker, b: __emval_decref, t: __emval_get_global, h: __emval_get_property, k: __emval_incref, v: __emval_instanceof, e: __emval_invoke, r: __emval_is_number, z: __emval_is_string, C: __emval_new_array, j: __emval_new_cstring, x: __emval_new_object, d: __emval_run_destructors, u: __emval_set_property, A: __emval_typeof, W: __gmtime_js, X: __localtime_js, K: __setitimer_js, Y: __tzset_js, U: _clock_time_get, E: _emscripten_check_blocking_allowed, ca: _emscripten_exit_with_live_runtime, y: _emscripten_get_now, P: _emscripten_resize_heap, aa: _environ_get, ba: _environ_sizes_get, L: _exit, T: _fd_close, $: _fd_fdstat_get, N: _fd_read, R: _fd_seek, S: _fd_write, a: wasmMemory, I: _proc_exit, M: _random_get };
+          wasmImports = { Q: __abort_js, J: __embind_finalize_value_array, l: __embind_finalize_value_object, I: __embind_register_bigint, ja: __embind_register_bool, n: __embind_register_class, m: __embind_register_class_constructor, c: __embind_register_class_function, ha: __embind_register_emval, H: __embind_register_float, h: __embind_register_function, x: __embind_register_integer, p: __embind_register_memory_view, t: __embind_register_optional, ia: __embind_register_std_string, C: __embind_register_std_wstring, ma: __embind_register_value_array, q: __embind_register_value_array_element, s: __embind_register_value_object, j: __embind_register_value_object_field, la: __embind_register_void, aa: __emscripten_init_main_thread_js, S: __emscripten_notify_mailbox_postmessage, X: __emscripten_receive_on_main_thread_js, L: __emscripten_runtime_keepalive_clear, E: __emscripten_thread_cleanup, $: __emscripten_thread_mailbox_await, fa: __emscripten_thread_set_strongref, G: __emval_array_to_memory_view, f: __emval_create_invoker, b: __emval_decref, r: __emval_get_global, i: __emval_get_property, k: __emval_incref, v: __emval_instanceof, e: __emval_invoke, u: __emval_is_number, A: __emval_is_string, B: __emval_new_array, g: __emval_new_cstring, w: __emval_new_object, d: __emval_run_destructors, o: __emval_set_property, D: __emval_typeof, Y: __gmtime_js, Z: __localtime_js, M: __setitimer_js, _: __tzset_js, W: _clock_time_get, F: _emscripten_check_blocking_allowed, ea: _emscripten_exit_with_live_runtime, y: _emscripten_get_now, R: _emscripten_resize_heap, ca: _environ_get, da: _environ_sizes_get, N: _exit, V: _fd_close, ba: _fd_fdstat_get, P: _fd_read, T: _fd_seek, U: _fd_write, a: wasmMemory, na: morph_bool_call, ka: morph_bool_npos, oa: morph_bool_present, ga: morph_bool_take, z: morph_reserve_stat, K: _proc_exit, O: _random_get };
         }
         function applySignatureConversions(wasmExports2) {
           wasmExports2 = Object.assign({}, wasmExports2);
           var makeWrapper_pp = (f) => (a0) => f(a0) >>> 0;
           var makeWrapper_p = (f) => () => f() >>> 0;
-          wasmExports2["ka"] = makeWrapper_pp(wasmExports2["ka"]);
-          wasmExports2["ma"] = makeWrapper_pp(wasmExports2["ma"]);
-          wasmExports2["oa"] = makeWrapper_p(wasmExports2["oa"]);
-          wasmExports2["Ba"] = makeWrapper_pp(wasmExports2["Ba"]);
-          wasmExports2["Ca"] = makeWrapper_p(wasmExports2["Ca"]);
+          wasmExports2["qa"] = makeWrapper_pp(wasmExports2["qa"]);
+          wasmExports2["sa"] = makeWrapper_pp(wasmExports2["sa"]);
+          wasmExports2["ua"] = makeWrapper_p(wasmExports2["ua"]);
+          wasmExports2["Ha"] = makeWrapper_pp(wasmExports2["Ha"]);
+          wasmExports2["Ia"] = makeWrapper_p(wasmExports2["Ia"]);
           return wasmExports2;
         }
         function run() {
@@ -4469,7 +8808,7 @@ var require_web_ifc_node = __commonJS({
           runtimeInitialized = true;
           if (!Module["noFSInit"] && !FS.initialized) FS.init();
           TTY.init();
-          wasmExports["$"]();
+          wasmExports["fa"]();
           FS.ignorePermissions = false;
         }
         function postRun() {
@@ -5935,6 +10274,13 @@ var require_web_ifc_node = __commonJS({
           noExitRuntime = false;
           runtimeKeepaliveCounter = 0;
         };
+        function __emval_array_to_memory_view(dst, src) {
+          dst >>>= 0;
+          src >>>= 0;
+          dst = Emval.toValue(dst);
+          src = Emval.toValue(src);
+          dst.set(src);
+        }
         var emval_methodCallers = [];
         var emval_addMethodCaller = (caller) => {
           var id = emval_methodCallers.length;
@@ -8256,22 +12602,95 @@ var require_web_ifc_node = __commonJS({
             }
           }
         }
+        function morph_bool_present() {
+          return typeof globalThis.__morphBool === "function" ? 1 : 0;
+        }
+        function morph_reserve_stat(kind) {
+          var st = globalThis.__morphBoolStats || (globalThis.__morphBoolStats = { calls: 0, ok: 0, fallback: 0, ms: 0, lastError: "" });
+          var k = ["chainsChecked", "chainsOpen", "geokernelFails", "chainsRedone", "chainsKeptGeokernel", "chainsKeptWebifc"][kind];
+          st[k] = (st[k] || 0) + 1;
+        }
+        function morph_bool_call(opCode, ap, an, ai, ain, bp, bn, bi, bin, unitToMetre) {
+          var fn = globalThis.__morphBool;
+          var st = globalThis.__morphBoolStats || (globalThis.__morphBoolStats = { calls: 0, ok: 0, fallback: 0, ms: 0, lastError: "" });
+          if (typeof fn !== "function") return -1;
+          st.calls++;
+          var t0 = (typeof performance !== "undefined" ? performance : Date).now();
+          try {
+            var A = { positions: HEAPF64.slice(ap >>> 3, (ap >>> 3) + an), indices: HEAPU32.slice(ai >>> 2, (ai >>> 2) + ain) };
+            var pv = globalThis.__morphBoolPrev;
+            if (pv && pv.exp.length === A.positions.length) {
+              var same = true;
+              for (var q = 0; q < A.positions.length; q++) {
+                var x = pv.exp[q];
+                if (Math.abs(A.positions[q] - x) > 1e-9 * (1 + Math.abs(x))) {
+                  same = false;
+                  break;
+                }
+              }
+              for (var q2 = 0; same && q2 < A.indices.length; q2++) if (A.indices[q2] !== q2) same = false;
+              if (same) {
+                A = pv.res;
+                st.reusedA = (st.reusedA || 0) + 1;
+              }
+            }
+            var B = { positions: HEAPF64.slice(bp >>> 3, (bp >>> 3) + bn), indices: HEAPU32.slice(bi >>> 2, (bi >>> 2) + bin) };
+            var r = fn(opCode === 1 ? "UNION" : "DIFFERENCE", A, B, { unitToMetre });
+            st.ms += (typeof performance !== "undefined" ? performance : Date).now() - t0;
+            if (!r || !r.positions || !r.indices || r.indices.length % 3 !== 0) {
+              st.fallback++;
+              st.lastError = "bad result";
+              return -2;
+            }
+            var nv = r.positions.length / 3;
+            for (var k = 0; k < r.indices.length; k++) if (!(r.indices[k] < nv)) {
+              st.fallback++;
+              st.lastError = "index out of range";
+              return -2;
+            }
+            globalThis.__morphBoolLast = r;
+            st.ok++;
+            return r.indices.length;
+          } catch (e) {
+            st.ms += (typeof performance !== "undefined" ? performance : Date).now() - t0;
+            st.fallback++;
+            st.lastError = String(e && e.message || e).slice(0, 300);
+            return -3;
+          }
+        }
+        function morph_bool_npos() {
+          return globalThis.__morphBoolLast.positions.length;
+        }
+        function morph_bool_take(pos, idx) {
+          var r = globalThis.__morphBoolLast;
+          globalThis.__morphBoolLast = null;
+          HEAPF64.set(r.positions instanceof Float64Array ? r.positions : Float64Array.from(r.positions), pos >>> 3 >>> 0);
+          HEAPU32.set(r.indices instanceof Uint32Array ? r.indices : Uint32Array.from(r.indices), idx >>> 2 >>> 0);
+          var e = new Float64Array(r.indices.length * 3);
+          for (var t = 0; t < r.indices.length; t++) {
+            var v = r.indices[t] * 3;
+            e[3 * t] = r.positions[v];
+            e[3 * t + 1] = r.positions[v + 1];
+            e[3 * t + 2] = r.positions[v + 2];
+          }
+          globalThis.__morphBoolPrev = { res: r, exp: e };
+        }
         var ___getTypeName, _malloc, _free, __emscripten_timeout, ___trap, memory, __indirect_function_table, wasmMemory, wasmTable;
         function assignWasmExports(wasmExports2) {
-          ___getTypeName = wasmExports2["aa"];
-          _malloc = wasmExports2["ba"];
-          _free = wasmExports2["ca"];
-          __emscripten_timeout = wasmExports2["ea"];
-          ___trap = wasmExports2["fa"];
-          memory = wasmMemory = wasmExports2["_"];
-          __indirect_function_table = wasmTable = wasmExports2["da"];
+          ___getTypeName = wasmExports2["ga"];
+          _malloc = wasmExports2["ha"];
+          _free = wasmExports2["ia"];
+          __emscripten_timeout = wasmExports2["ka"];
+          ___trap = wasmExports2["la"];
+          memory = wasmMemory = wasmExports2["ea"];
+          __indirect_function_table = wasmTable = wasmExports2["ja"];
         }
-        var wasmImports = { H: __abort_js, D: __embind_finalize_value_array, k: __embind_finalize_value_object, C: __embind_register_bigint, X: __embind_register_bool, m: __embind_register_class, l: __embind_register_class_constructor, b: __embind_register_class_function, V: __embind_register_emval, B: __embind_register_float, f: __embind_register_function, v: __embind_register_integer, n: __embind_register_memory_view, r: __embind_register_optional, W: __embind_register_std_string, z: __embind_register_std_wstring, Z: __embind_register_value_array, o: __embind_register_value_array_element, p: __embind_register_value_object, h: __embind_register_value_object_field, Y: __embind_register_void, F: __emscripten_runtime_keepalive_clear, e: __emval_create_invoker, a: __emval_decref, s: __emval_get_global, g: __emval_get_property, j: __emval_incref, u: __emval_instanceof, d: __emval_invoke, q: __emval_is_number, x: __emval_is_string, A: __emval_new_array, i: __emval_new_cstring, w: __emval_new_object, c: __emval_run_destructors, t: __emval_set_property, y: __emval_typeof, P: __gmtime_js, Q: __localtime_js, G: __setitimer_js, R: __tzset_js, K: _clock_time_get, L: _emscripten_resize_heap, T: _environ_get, U: _environ_sizes_get, O: _fd_close, S: _fd_fdstat_get, J: _fd_read, M: _fd_seek, N: _fd_write, E: _proc_exit, I: _random_get };
+        var wasmImports = { J: __abort_js, F: __embind_finalize_value_array, k: __embind_finalize_value_object, E: __embind_register_bigint, _: __embind_register_bool, m: __embind_register_class, l: __embind_register_class_constructor, b: __embind_register_class_function, Y: __embind_register_emval, D: __embind_register_float, g: __embind_register_function, w: __embind_register_integer, o: __embind_register_memory_view, s: __embind_register_optional, Z: __embind_register_std_string, A: __embind_register_std_wstring, ba: __embind_register_value_array, p: __embind_register_value_array_element, r: __embind_register_value_object, i: __embind_register_value_object_field, aa: __embind_register_void, H: __emscripten_runtime_keepalive_clear, C: __emval_array_to_memory_view, e: __emval_create_invoker, a: __emval_decref, q: __emval_get_global, h: __emval_get_property, j: __emval_incref, u: __emval_instanceof, d: __emval_invoke, t: __emval_is_number, y: __emval_is_string, z: __emval_new_array, f: __emval_new_cstring, v: __emval_new_object, c: __emval_run_destructors, n: __emval_set_property, B: __emval_typeof, R: __gmtime_js, S: __localtime_js, I: __setitimer_js, T: __tzset_js, M: _clock_time_get, N: _emscripten_resize_heap, V: _environ_get, W: _environ_sizes_get, Q: _fd_close, U: _fd_fdstat_get, L: _fd_read, O: _fd_seek, P: _fd_write, ca: morph_bool_call, $: morph_bool_npos, da: morph_bool_present, X: morph_bool_take, x: morph_reserve_stat, G: _proc_exit, K: _random_get };
         function applySignatureConversions(wasmExports2) {
           wasmExports2 = Object.assign({}, wasmExports2);
           var makeWrapper_pp = (f) => (a0) => f(a0) >>> 0;
-          wasmExports2["aa"] = makeWrapper_pp(wasmExports2["aa"]);
-          wasmExports2["ba"] = makeWrapper_pp(wasmExports2["ba"]);
+          wasmExports2["ga"] = makeWrapper_pp(wasmExports2["ga"]);
+          wasmExports2["ha"] = makeWrapper_pp(wasmExports2["ha"]);
           wasmExports2["_emscripten_stack_alloc"] = makeWrapper_pp(wasmExports2["_emscripten_stack_alloc"]);
           return wasmExports2;
         }
@@ -8336,6 +12755,9 @@ __export(web_ifc_api_exports, {
   FILE_NAME: () => FILE_NAME,
   FILE_SCHEMA: () => FILE_SCHEMA,
   FromRawLineData: () => FromRawLineData,
+  GEOM_LINE_STRIP: () => GEOM_LINE_STRIP,
+  GEOM_POINTS: () => GEOM_POINTS,
+  GEOM_TRIANGLES: () => GEOM_TRIANGLES,
   Handle: () => Handle,
   IFC2DCOMPOSITECURVE: () => IFC2DCOMPOSITECURVE,
   IFC2X3: () => IFC2X3,
@@ -72159,6 +76581,8 @@ if (typeof document !== "undefined") {
       currentScriptData.src.lastIndexOf("/") + 1
     );
 }
+var geokernel = require_geokernel();
+var geokernelFallback = (op, a, b, opts) => geokernel.webifcBool(op, a, b, opts);
 var UNKNOWN = 0;
 var STRING = 1;
 var LABEL = 2;
@@ -72171,6 +76595,9 @@ var SET_END = 8;
 var LINE_END = 9;
 var INTEGER = 10;
 var BINARY = 11;
+var GEOM_TRIANGLES = 0;
+var GEOM_LINE_STRIP = 1;
+var GEOM_POINTS = 2;
 function ms() {
   return (/* @__PURE__ */ new Date()).getTime();
 }
@@ -72190,6 +76617,7 @@ var IfcAPI2 = class {
      * Contains all the logic and methods regarding properties, psets, qsets, etc.
      */
     this.properties = new Properties(this);
+    this.booleanFallbackChosen = false;
   }
   /**
    * Initializes the WASM module (WebIFCWasm), required before using any other functionality.
@@ -72198,6 +76626,7 @@ var IfcAPI2 = class {
    * you override the path from which the wasm module is loaded.
    */
   async Init(customLocateFileHandler, forceSingleThread = false) {
+    if (!this.booleanFallbackChosen) globalThis.__morphBool = geokernelFallback;
     let shouldRetrySingleThread = false;
     if (!WebIFCWasm) {
       if (typeof self !== "undefined" && self.crossOriginIsolated && !forceSingleThread) {
@@ -72300,6 +76729,7 @@ var IfcAPI2 = class {
       TOLERANCE_SCALAR_EQUALITY: 1e-4,
       PLANE_REFIT_ITERATIONS: 1,
       BOOLEAN_UNION_THRESHOLD: 150,
+      EXPORT_POLYLINES: false,
       ...settings
     };
     return s;
@@ -73082,6 +77512,45 @@ var IfcAPI2 = class {
     this.wasmModule.StreamAllMeshes(modelID, meshCallback, applyLinearScalingFactor);
   }
   /**
+   * As StreamAllMeshes, with the brep kernel as the geometry engine (builds with BREP_ENGINE only).
+   * Each Body item the kernel builds comes as a shell instead of a mesh: its geometry in `mesh` has no
+   * vertices, and `shells` holds `{ id, points, rings }` for it -- points in file units, in the frame
+   * the geometry's flatTransformation places; `rings` per face: ring count, then each ring's length
+   * and point indices, the first ring the outer one. The arrays view wasm memory and are valid
+   * during the callback only. Anything the kernel does not build comes as an ordinary mesh.
+   */
+  StreamAllBrepMeshes(modelID, meshCallback) {
+    if (!this.wasmModule.StreamAllBrepMeshes) throw new Error("web-ifc: this build has no brep engine");
+    this.wasmModule.StreamAllBrepMeshes(modelID, meshCallback);
+  }
+  /** As StreamMeshes, with the brep kernel as the geometry engine. See StreamAllBrepMeshes. */
+  StreamBrepMeshes(modelID, expressIDs, meshCallback) {
+    if (!this.wasmModule.StreamBrepMeshes) throw new Error("web-ifc: this build has no brep engine");
+    this.wasmModule.StreamBrepMeshes(modelID, expressIDs, meshCallback);
+  }
+  /**
+   * The swept disks of a product (e.g. reinforcing bars) without meshing them: per IfcSweptDiskSolid item,
+   * its placement and colour as StreamMeshes would give them, the directrix it is swept along (any curve:
+   * arcs and trims evaluated as for the mesh) and its radius. No tube is built and nothing stays cached.
+   * Other items of the product are not returned.
+   */
+  GetSweptDiskAxes(modelID, productID) {
+    return this.wasmModule.GetSweptDiskAxes(modelID, productID);
+  }
+  /** Whether this build carries the brep geometry engine. */
+  HasBrepEngine() {
+    return !!this.wasmModule?.StreamAllBrepMeshes;
+  }
+  /**
+   * The brep engine on booleans only: Body items that are IfcBooleanResult / IfcBooleanClippingResult
+   * (or belong to a product with openings) go to the brep kernel, everything else is meshed by
+   * web-ifc as with StreamMeshes, keeping its shared geometries.
+   */
+  SetBrepBooleansOnly(modelID, on) {
+    if (!this.wasmModule.SetBrepBooleansOnly) throw new Error("web-ifc: this build has no brep engine");
+    this.wasmModule.SetBrepBooleansOnly(modelID, on);
+  }
+  /**
    * Streams all meshes of a model with a specific ifc type
    * @param modelID Model handle retrieved by OpenModel
    * @param types types of elements to stream
@@ -73214,6 +77683,81 @@ var IfcAPI2 = class {
     this.wasmModule.SetLogLevel(level);
   }
   /**
+   * Registers an external boolean engine used as a RESERVE: web-ifc always runs its own boolean chain first; only when
+   * the result of a chain has open (naked) edges is the whole chain redone with this function, and the result with
+   * fewer naked edges is kept (tie → web-ifc). If the function throws or returns an invalid mesh, web-ifc's result
+   * is kept. Pass null to unregister.
+   * The function is called synchronously as fn(op, A, B, { unitToMetre }) with op 'DIFFERENCE' | 'UNION' and
+   * A/B = { positions: Float64Array (x,y,z in model units), indices: Uint32Array }; it must return { positions, indices }.
+   * Counters: globalThis.__morphBoolStats (chainsChecked, chainsOpen, chainsRedone, chainsKeptGeokernel,
+   * chainsKeptWebifc, geokernelFails, calls, ok, fallback, ms).
+   * BY DEFAULT the bundled geokernel is registered by Init(); call SetBooleanFallback(null) to disable it (pure
+   * web-ifc), or pass another function to replace it.
+   * @param fn the external boolean function, or null
+   */
+  SetBooleanFallback(fn) {
+    this.booleanFallbackChosen = true;
+    globalThis.__morphBool = fn || void 0;
+  }
+  /**
+   * Section of one triangle mesh by a plane: the cut lines and the cut area (cap), triangulated. The mesh is not
+   * modified (hiding the part in front of the plane is up to the viewer, e.g. a clipping plane).
+   * Tolerant of real-world meshes: flipped triangles do not matter, loops are nested by containment (holes are
+   * kept), chains that do not close are closed when their ends are nearer than `closeGap`, and whatever stays
+   * open is returned as lines only (counted in `openChains`).
+   * @param positions x, y, z per vertex (any frame, any units)
+   * @param indices 3 per triangle
+   * @param plane the plane, through `point` with normal `normal`, in the same frame as the positions
+   * @param options weld: distance under which two cut points are the same (default 1e-6); closeGap: largest gap
+   * closed between the ends of open chains (default 0 = never)
+   * @returns capPositions (x, y, z) + capIndices, lines (x1, y1, z1, x2, y2, z2 per segment) and counters
+   */
+  SectionMesh(positions, indices, plane, options = {}) {
+    const p = [plane.point[0], plane.point[1], plane.point[2], plane.normal[0], plane.normal[1], plane.normal[2]];
+    return this.wasmModule.SectionMesh(positions, indices, p, options.weld ?? 1e-6, options.closeGap ?? 0);
+  }
+  /**
+   * Section (or floor plan, with a horizontal plane) of a whole model: every element whose geometry the plane
+   * crosses, cut as one mesh (all its pieces, placed). Coordinates are web-ifc's model frame (Y up, metres when
+   * applyLinearScalingFactor is true, the same frame as StreamAllMeshes + flatTransformation).
+   * @param modelID Model handle retrieved by OpenModel
+   * @param plane the plane, in the model frame
+   * @param options see SectionMesh (default weld 1e-5, closeGap 1e-3 here: model units after scaling)
+   * @returns one entry per element crossed, with its expressID and the colour of its first piece
+   */
+  GetSection(modelID, plane, options = {}) {
+    const opts = { weld: options.weld ?? 1e-5, closeGap: options.closeGap ?? 1e-3 };
+    const n = plane.normal, len = Math.hypot(n[0], n[1], n[2]) || 1;
+    const nn = [n[0] / len, n[1] / len, n[2] / len];
+    const out = [];
+    this.StreamAllMeshes(modelID, (mesh) => {
+      const pos = [], idx = [];
+      let below = false, above = false, color = null;
+      for (let i = 0; i < mesh.geometries.size(); i++) {
+        const pg = mesh.geometries.get(i);
+        const g = this.GetGeometry(modelID, pg.geometryExpressID);
+        const v = this.GetVertexArray(g.GetVertexData(), g.GetVertexDataSize());
+        const ix = this.GetIndexArray(g.GetIndexData(), g.GetIndexDataSize());
+        g.delete();
+        const m = pg.flatTransformation, base = pos.length / 3;
+        if (!color) color = pg.color;
+        for (let k = 0; k < v.length; k += 6) {
+          const x = v[k], y = v[k + 1], z = v[k + 2];
+          const X = m[0] * x + m[4] * y + m[8] * z + m[12], Y = m[1] * x + m[5] * y + m[9] * z + m[13], Z = m[2] * x + m[6] * y + m[10] * z + m[14];
+          const d = (X - plane.point[0]) * nn[0] + (Y - plane.point[1]) * nn[1] + (Z - plane.point[2]) * nn[2];
+          if (d < 0) below = true;
+          else if (d > 0) above = true;
+          pos.push(X, Y, Z);
+        }
+        for (let k = 0; k < ix.length; k++) idx.push(ix[k] + base);
+      }
+      if (!below || !above) return;
+      const r = this.SectionMesh(pos, idx, plane, opts);
+      if (r.lines.length) out.push(Object.assign(r, { expressID: mesh.expressID, color }));
+    });
+    return out;
+  }
+  /**
    * Encodes test using IFC Encoding
    * @text the text to encode
    * @returns the text encoded
@@ -73247,6 +77791,9 @@ var IfcAPI2 = class {
   FILE_NAME,
   FILE_SCHEMA,
   FromRawLineData,
+  GEOM_LINE_STRIP,
+  GEOM_POINTS,
+  GEOM_TRIANGLES,
   Handle,
   IFC2DCOMPOSITECURVE,
   IFC2X3,

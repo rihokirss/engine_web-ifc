@@ -20,9 +20,24 @@ export declare const SET_END = 8;
 export declare const LINE_END = 9;
 export declare const INTEGER = 10;
 /** STEP binary literal contents, including the unused-bit prefix (0-3).
- * Up to 65535 characters; lowercase hex is accepted and saved as uppercase.
+ * Up to 2^32-1 characters; lowercase hex is accepted and saved as uppercase.
  */
 export declare const BINARY = 11;
+/**
+ * PlacedGeometry.geomType value for a regular triangle mesh.
+ */
+export declare const GEOM_TRIANGLES = 0;
+/**
+ * PlacedGeometry.geomType value for wireframe geometry (IfcPolyline,
+ * IfcIndexedPolyCurve, IfcCircle, IfcEdge, ...): the vertices form a connected
+ * polyline strip that has to be drawn with line primitives instead of triangles.
+ */
+export declare const GEOM_LINE_STRIP = 1;
+/**
+ * PlacedGeometry.geomType value for independent points (IfcCartesianPoint and
+ * IfcCartesianPointList representation items): draw with point primitives.
+ */
+export declare const GEOM_POINTS = 2;
 /**
  * Settings for the IFCLoader
  * @property {boolean} COORDINATE_TO_ORIGIN - If true, the model will be translated to the origin.
@@ -37,6 +52,7 @@ export declare const BINARY = 11;
  * @property {number} TOLERANCE_SCALAR_EQUALITY - Tolerance used to compare scalar values as equal.
  * @property {number} PLANE_REFIT_ITERATIONS - Number of iterations used when adjusting triangles to a plane.
  * @property {number} BOOLEAN_UNION_THRESHOLD - Minimum number of solids before triggering a boolean union operation.
+ * @property {boolean} EXPORT_POLYLINES - Export wireframe (curve/point) geometry of products without solid geometry. Defaults to false.
  */
 export interface LoaderSettings {
     /** Allow best-effort parsing of older/preview schemas using incompatible generated layouts.
@@ -56,6 +72,14 @@ export interface LoaderSettings {
     TOLERANCE_SCALAR_EQUALITY?: number;
     PLANE_REFIT_ITERATIONS?: number;
     BOOLEAN_UNION_THRESHOLD?: number;
+    /**
+     * Export wireframe (curve/point) geometry of products that carry no solid
+     * geometry at all, e.g. IfcAnnotation Curve3D representations, IfcGrid or
+     * IfcGeometricCurveSet (defaults to false). Products that also carry solid
+     * geometry keep exporting triangles only. Set to true to also receive
+     * wireframe geometry.
+     */
+    EXPORT_POLYLINES?: boolean;
 }
 export interface Vector<T> extends Iterable<T> {
     get(index: number): T;
@@ -77,6 +101,12 @@ export interface PlacedGeometry {
     /** False when neither the element nor any of its sub-items carries an IFC
      * style; color is then a neutral default rather than a material. */
     hasColor: boolean;
+    /**
+     * GEOM_TRIANGLES (0), GEOM_LINE_STRIP (1) or GEOM_POINTS (2). Non-triangle
+     * geometry is only produced for products whose representation contains no
+     * solid or face geometry (e.g. IfcAnnotation Curve3D representations).
+     */
+    geomType: number;
     geometryExpressID: number;
     flatTransformation: Array<number>;
 }
@@ -84,6 +114,12 @@ export interface FlatMesh {
     geometries: Vector<PlacedGeometry>;
     expressID: number;
     delete(): void;
+}
+/** A Body item the brep engine built (see IfcAPI.StreamAllBrepMeshes). */
+export interface BrepShell {
+    id: number;
+    points: Float64Array;
+    rings: Int32Array;
 }
 export interface Point {
     x: number;
@@ -99,6 +135,19 @@ export interface SweptDiskSolid {
     profile: Profile;
     axis: Array<Curve>;
     profileRadius: number;
+}
+/** An IfcSweptDiskSolid read without meshing it (see IfcAPI.GetSweptDiskAxes). */
+export interface SweptDiskAxis {
+    /** The IfcSweptDiskSolid item, as PlacedGeometry.geometryExpressID. */
+    geometryExpressID: number;
+    /** As PlacedGeometry.color. */
+    color: Color;
+    /** As PlacedGeometry.flatTransformation (column-major 4x4). */
+    flatTransformation: Float64Array;
+    /** The directrix the sweep follows, x y z per point, in the item's frame (as SweptDiskSolid.axis). */
+    points: Float64Array;
+    radius: number;
+    innerRadius: number;
 }
 export interface Profile {
     curve: Curve;
@@ -183,6 +232,29 @@ export interface BooleanOperator {
 export interface ProfileSection {
     GetBuffers(): Buffers;
     SetValues(pType: number, width: number, depth: number, webThickness: number, flangeThickness: number, hasFillet: boolean, filletRadius: number, radius: number, slope: number, circleSegments: number, placement: Array<number>): void;
+}
+/** A plane through `point` with normal `normal` (see SectionMesh / GetSection). */
+export interface SectionPlane {
+    point: ArrayLike<number>;
+    normal: ArrayLike<number>;
+}
+export interface SectionOptions {
+    /** distance under which two cut points are the same point */
+    weld?: number;
+    /** largest gap closed between the ends of chains that do not close (0 = never) */
+    closeGap?: number;
+}
+export interface SectionResult {
+    /** x, y, z per cap vertex */
+    capPositions: Float64Array;
+    /** 3 per cap triangle */
+    capIndices: Uint32Array;
+    /** x1, y1, z1, x2, y2, z2 per cut segment */
+    lines: Float64Array;
+    closedLoops: number;
+    closedByGap: number;
+    openChains: number;
+    earcutFailures: number;
 }
 export interface IfcType {
     typeID: number;
@@ -476,6 +548,32 @@ export declare class IfcAPI {
      */
     StreamAllMeshes(modelID: number, meshCallback: (mesh: FlatMesh, index: number, total: number) => void, applyLinearScalingFactor?: boolean): void;
     /**
+     * As StreamAllMeshes, with the brep kernel as the geometry engine (builds with BREP_ENGINE only).
+     * Each Body item the kernel builds comes as a shell instead of a mesh: its geometry in `mesh` has no
+     * vertices, and `shells` holds `{ id, points, rings }` for it -- points in file units, in the frame
+     * the geometry's flatTransformation places; `rings` per face: ring count, then each ring's length
+     * and point indices, the first ring the outer one. The arrays view wasm memory and are valid
+     * during the callback only. Anything the kernel does not build comes as an ordinary mesh.
+     */
+    StreamAllBrepMeshes(modelID: number, meshCallback: (mesh: FlatMesh, shells: BrepShell[], index: number, total: number) => void): void;
+    /** As StreamMeshes, with the brep kernel as the geometry engine. See StreamAllBrepMeshes. */
+    StreamBrepMeshes(modelID: number, expressIDs: Array<number>, meshCallback: (mesh: FlatMesh, shells: BrepShell[], index: number, total: number) => void): void;
+    /**
+     * The swept disks of a product (e.g. reinforcing bars) without meshing them: per IfcSweptDiskSolid item,
+     * its placement and colour as StreamMeshes would give them, the directrix it is swept along (any curve:
+     * arcs and trims evaluated as for the mesh) and its radius. No tube is built and nothing stays cached.
+     * Other items of the product are not returned.
+     */
+    GetSweptDiskAxes(modelID: number, productID: number): SweptDiskAxis[];
+    /** Whether this build carries the brep geometry engine. */
+    HasBrepEngine(): boolean;
+    /**
+     * The brep engine on booleans only: Body items that are IfcBooleanResult / IfcBooleanClippingResult
+     * (or belong to a product with openings) go to the brep kernel, everything else is meshed by
+     * web-ifc as with StreamMeshes, keeping its shared geometries.
+     */
+    SetBrepBooleansOnly(modelID: number, on: boolean): void;
+    /**
      * Streams all meshes of a model with a specific ifc type
      * @param modelID Model handle retrieved by OpenModel
      * @param types types of elements to stream
@@ -549,6 +647,59 @@ export declare class IfcAPI {
      * @param level Log level to set
      */
     SetLogLevel(level: LogLevel): void;
+    /**
+     * Registers an external boolean engine used as a RESERVE: web-ifc always runs its own boolean chain first; only when
+     * the result of a chain has open (naked) edges is the whole chain redone with this function, and the result with
+     * fewer naked edges is kept (tie → web-ifc). If the function throws or returns an invalid mesh, web-ifc's result
+     * is kept. Pass null to unregister.
+     * The function is called synchronously as fn(op, A, B, { unitToMetre }) with op 'DIFFERENCE' | 'UNION' and
+     * A/B = { positions: Float64Array (x,y,z in model units), indices: Uint32Array }; it must return { positions, indices }.
+     * Counters: globalThis.__morphBoolStats (chainsChecked, chainsOpen, chainsRedone, chainsKeptGeokernel,
+     * chainsKeptWebifc, geokernelFails, calls, ok, fallback, ms).
+     * BY DEFAULT the bundled geokernel is registered by Init(); call SetBooleanFallback(null) to disable it (pure
+     * web-ifc), or pass another function to replace it.
+     * @param fn the external boolean function, or null
+     */
+    SetBooleanFallback(fn: ((op: 'DIFFERENCE' | 'UNION', a: {
+        positions: Float64Array;
+        indices: Uint32Array;
+    }, b: {
+        positions: Float64Array;
+        indices: Uint32Array;
+    }, opts: {
+        unitToMetre: number;
+    }) => {
+        positions: Float64Array | number[];
+        indices: Uint32Array | number[];
+    }) | null): void;
+    private booleanFallbackChosen;
+    /**
+     * Section of one triangle mesh by a plane: the cut lines and the cut area (cap), triangulated. The mesh is not
+     * modified (hiding the part in front of the plane is up to the viewer, e.g. a clipping plane).
+     * Tolerant of real-world meshes: flipped triangles do not matter, loops are nested by containment (holes are
+     * kept), chains that do not close are closed when their ends are nearer than `closeGap`, and whatever stays
+     * open is returned as lines only (counted in `openChains`).
+     * @param positions x, y, z per vertex (any frame, any units)
+     * @param indices 3 per triangle
+     * @param plane the plane, through `point` with normal `normal`, in the same frame as the positions
+     * @param options weld: distance under which two cut points are the same (default 1e-6); closeGap: largest gap
+     * closed between the ends of open chains (default 0 = never)
+     * @returns capPositions (x, y, z) + capIndices, lines (x1, y1, z1, x2, y2, z2 per segment) and counters
+     */
+    SectionMesh(positions: ArrayLike<number>, indices: ArrayLike<number>, plane: SectionPlane, options?: SectionOptions): SectionResult;
+    /**
+     * Section (or floor plan, with a horizontal plane) of a whole model: every element whose geometry the plane
+     * crosses, cut as one mesh (all its pieces, placed). Coordinates are web-ifc's model frame (Y up, metres when
+     * applyLinearScalingFactor is true, the same frame as StreamAllMeshes + flatTransformation).
+     * @param modelID Model handle retrieved by OpenModel
+     * @param plane the plane, in the model frame
+     * @param options see SectionMesh (default weld 1e-5, closeGap 1e-3 here: model units after scaling)
+     * @returns one entry per element crossed, with its expressID and the colour of its first piece
+     */
+    GetSection(modelID: number, plane: SectionPlane, options?: SectionOptions): Array<SectionResult & {
+        expressID: number;
+        color: Color;
+    }>;
     /**
      * Encodes test using IFC Encoding
      * @text the text to encode
